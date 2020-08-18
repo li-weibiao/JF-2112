@@ -1,0 +1,149 @@
+1、	SHELL编程概念剖析&案例演练
+1）	SHELL是什么？SHELL的概念？
+	SHELL是用户和Linux内核之间的沟通桥梁；
+ 
+	用户默认是不能直接操作Linux内核（Linux系统）；
+	用户可以借助SHELL中间件（软件）可以实现交互；
+	SHELL环境可以接收用户输入的指令，将指令传递给Linux内核，Linux内核处理指令请求；
+	Linux内核将处理完毕的数据返回SHELL，SHELL对数据内容进行解释，SHELL将最终的解释之后数据返回用户（终端）；
+	SHELL看成是一个命令解释器，解析用户输入的指令，并且显示最终内容；
+	SHELL解释器很多的种类，大多数的Linux系统自带的SHELL解释器：BASH，开源、免费的、使用便捷、高效等；
+2）	SHELL和SHELL编程区别？
+	将单个或者多个Linux指令，按照一定的逻辑关系和顺序堆积在文本文件（脚本）中；
+	文本文件中的指令会在SHELL解释器下被执行，这个整个过程称为SHELL编程；
+	可以将单个或者多个Linux指令，即将在SHELL解释器下执行的命令，称为SHELL指令/命令；
+	SHELL编程的产物是SHELL脚本（普通文本文件），只不过SHELL脚本文件一般以.sh结尾，类似普通文件.txt，文件名称没有任何限制和约束，推荐名称跟内容具有相关性；
+ 
+3）	SHELL编程代码，编程时可以使用各种编程工具（编辑器），vi、vim、nano、gedit、sublime、notepad等，推荐使用Linux自带vim工具编程；
+4）	脚本代码第一行规范，通常来讲，以#!开头（表示强调+标识），其后接SHELL解释器的类型，例如#!/bin/sh、#!/bin/bash（SHELL脚本以/bin/sh、/bin/bash解释器去执行SHELL指令）；
+ 
+5）	SHELL编程代码除了第一行的#！以外，其余行的#表示注释和说明，通常来讲，没有实际的意义，可有可无；
+#!/bin/bash
+#2018年10月8日21:13:51
+#auto print disk info
+#by author www.jfedu.net
+#######################
+df -h
+ifconfig eth0
+mkdir -p /tmp/2050/
+echo -----------------------
+2、	SHELL编程开发Apache源码部署脚本（编程思路）
+1）	Apache是一款WEB软件，可以发布网站代码，提供网页信息服务，用户通过浏览器可以实现页面的访问；
+2）	Apache软件落地，部署至Linux平台，两种部署方式：基于YUM二进制方式，基于MAKE源码编译方式，此处选择MAKE源码编译方式（管理方便、自定义功能）；
+3）	Apache官网下载Apache软件包稳定的版本：httpd-2.4.34.tar.gz，下载地址：
+wget https://mirrors.tuna.tsinghua.edu.cn/apache/httpd/httpd-2.4.34.tar.bz2 
+4）	因为软件包基于tar工具打包和压缩，通过tar工具解压缩，解压缩指令：tar -xf|-xjvf httpd-2.4.34.tar.bz2；
+5）	预编译;
+./configure --prefix=/usr/local/apache2/ --enable-so --enable-rewrite --enable-proxy
+6）	编译;
+make
+7）	安装;
+make install
+8）	启动;
+/usr/local/apache2/bin/apachectl start
+3、	SHELL编程开发Apache源码部署脚本（编程实战V1）
+#!/bin/bash
+#2018年10月8日21:25:44
+#auto install apache web v1
+#by author www.jfedu.net
+#########################
+wget -c https://mirrors.tuna.tsinghua.edu.cn/apache/httpd/httpd-2.4.34.tar.bz2
+tar -xf httpd-2.4.34.tar.bz2
+cd httpd-2.4.34
+./configure --prefix=/usr/local/apache2/ --enable-so --enable-rewrite --enable-proxy
+make
+make install
+/usr/local/apache2/bin/apachectl start
+ps -ef|grep httpd
+netstat -ntlp|grep 80
+systemctl stop firewalld.service
+setenforce 0
+4、	SHELL编程开发Apache源码部署脚本（编程实战V2）
+#!/bin/bash
+#2018年10月8日21:25:44
+#auto install apache web v2
+#by author www.jfedu.net
+#########################
+yum install -y wget bzip2-devel tar make zlib zlib-devel
+yum install -y gcc gcc-c++ apr-devel apr-util-devel pcre-devel
+wget -c https://mirrors.tuna.tsinghua.edu.cn/apache/httpd/httpd-2.4.34.tar.bz2
+tar -xf httpd-2.4.34.tar.bz2
+cd httpd-2.4.34
+./configure --prefix=/usr/local/apache2/ --enable-so --enable-rewrite --enable-proxy
+make
+make install
+/usr/local/apache2/bin/apachectl start
+ps -ef|grep httpd
+netstat -ntlp|grep 80
+systemctl stop firewalld.service
+setenforce 0
+echo "/usr/local/apache2/bin/apachectl start" >>/etc/rc.local
+5、	SHELL编程变量概念和应用场景
+1）	变量和常量，变量是可变的数值，可以随着使用场景而发生改变；
+2）	SHELL编程中的变量定义方式使用=赋值，等号前称为变量名称，等号后称为变量的值，例如A=123，可以使用$A引用其数值；
+3）	SHELL编程变量用途：为了提高编程的效率，可以重复调用繁杂的关键词、数值、简化编程的复杂度，使SHELL编程代码可读性更强；
+4）	SHELL编程变量分为三种变量：系统变量、环境变量、用户变量；
+	系统变量
+主要是用于脚本各个参数设定、指定特殊的语法，例如$1、$?、$$、$@、$#、$0等；
+	环境变量
+环境变量，默认Linux系统已经存在的变量，永久生效，全局生效，被称为全局变量，可以自定义环境变量：export WEB=www.jf.com，将其加入/etc/profile文件中，source /etc/profile;
+	用户变量
+用户自定义的变量，称为用户变量或者局部变量，例如：A=123，WEB=www.jfedu.net、APACHE_DIR=/usr/local/apache2/;
+6、	SHELL编程开发Apache源码部署脚本（编程实战V3）
+#!/bin/bash
+#2018年10月8日21:25:44
+#auto install apache web v3
+#by author www.jfedu.net
+#########################
+APACHE_VER="2.4.34"
+APACHE_YUM="yum install -y"
+APACHE_DIR="/usr/local/apache2"
+APACHE_SOFT="httpd-${APACHE_VER}.tar.bz2"
+APACHE_ARG="--enable-so --enable-rewrite --enable-proxy"
+APACHE_URL="https://mirrors.tuna.tsinghua.edu.cn/apache/httpd"
+$APACHE_YUM  wget bzip2-devel tar make zlib zlib-devel
+$APACHE_YUM gcc gcc-c++ apr-devel apr-util-devel pcre-devel
+wget -c $APACHE_URL/$APACHE_SOFT
+tar -xf $APACHE_SOFT
+cd httpd-$APACHE_VER
+./configure --prefix=$APACHE_DIR/ $APACHE_ARG
+make
+make install
+$APACHE_DIR/bin/apachectl start
+ps -ef|grep httpd
+netstat -ntlp|grep 80
+systemctl stop firewalld.service
+setenforce 0
+echo "$APACHE_DIR/bin/apachectl start" >>/etc/rc.local
+7、	SHELL编程开发Apache源码部署脚本（编程实战V4）
+#!/bin/bash
+#2018年10月8日21:25:44
+#auto install apache web v3
+#by author www.jfedu.net
+#########################
+APACHE_VER="$1"
+APACHE_YUM="yum install -y"
+APACHE_DIR="/usr/local/apache2"
+APACHE_SOFT="httpd-${APACHE_VER}.tar.bz2"
+APACHE_ARG="--enable-so --enable-rewrite --enable-proxy --enable-ssl"
+APACHE_URL="https://mirrors.tuna.tsinghua.edu.cn/apache/httpd"
+$APACHE_YUM  wget bzip2-devel tar make zlib zlib-devel
+$APACHE_YUM gcc gcc-c++ apr-devel apr-util-devel pcre-devel
+wget -c $APACHE_URL/$APACHE_SOFT
+tar -xf $APACHE_SOFT
+cd httpd-$APACHE_VER
+./configure --prefix=$APACHE_DIR/ $APACHE_ARG
+make
+make install
+$APACHE_DIR/bin/apachectl start
+ps -ef|grep httpd
+netstat -ntlp|grep 80
+systemctl stop firewalld.service
+setenforce 0
+echo "$APACHE_DIR/bin/apachectl start" >>/etc/rc.local
+
+
+
+
+
+
