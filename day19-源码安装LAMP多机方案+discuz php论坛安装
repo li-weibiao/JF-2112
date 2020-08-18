@@ -1,0 +1,523 @@
+1.1 	源码安装LAMP多机方案
+源码安装LAMP多机方式，Apache WEB服务与MYSQL数据库服务分别部署在不同的服务器即可，PHP与Apache服务部署在一台服务器，PHP编译参数时加入如下代码进行LAMP的整合，mysqlnd为PHP远程连接MYSQL数据库服务器的一种方式：
+./configure --prefix=/usr/local/php5  \
+--with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  \
+Mysql-Mysqlnd驱动：是由PHP源码提供的mysql驱动连接代码，目的是连接mysql和php之间的api接口关系，也叫MySQL的增强扩展 (mysqlI)
+PDO是一个应用层的抽象依赖库，底层和mysql-server连接需要mysql驱动的支持，
+--with-apxs=：代表是apache1.x版
+--with-apxs=：代表是apache2.x版
+--with-apxs2=/usr/local/apache2/bin/apxs
+make 
+make  install 
+1.2 	LAMP+Discuz+Wordpress虚拟主机
+企业真实环境中，一台WEB服务器发布单个网站会非常浪费资源，所以一台WEB服务器上会发布多个网站，少则3-5个，多则2-30个网站。
+在一台服务器上发布多网站，也称之为部署多个虚拟主机，WEB虚拟主机配置方法有三种：
+Yum install epel-release -y
+	基于单IP多个Socket端口；
+	基于多IP地址一个端口；
+	基于单IP一个端口不同域名。
+其中基于同一端口不同域名的方式在企业中得到广泛的使用和应用，如下为基于一个端口不同域名，在一台Apache WEB服务器上部署多个网站，步骤如下：
+（1）	LAMP+虚拟主机实战环境配置
+LAMP服务器 Centos7.4-1： 10.0.0.4
+
+1.2.1  Centos7.4-1配置
+（1）	Apache WEB安装，先安装apr、apr-utils等基础库包。
+yum install apr-devel apr-util-devel  gcc c ncurses-devel cmake libaio bison gcc-c++  git   pcre*  -y
+PCRE是一个Perl库，包括 perl 兼容的正则表达式库。PCRE是一个轻量级的函数库，比Boost之类的正则表达式库小得多。
+CMake是一种跨平台编译工具，比make更为高级，使用起来要方便得多。CMake主要是编写CMakeLists.txt文件，然后用cmake命令将CMakeLists.txt文件转化为make所需要的makefile文件，最后用make命令编译源码生成可执行程序或共享库（so(shared object)）。
+ncurses是字符终端下屏幕控制的基本库，mysql登录时使用到了相应的功能。
+libaio是Linux下的一个异步非阻塞接口，它提供了以异步非阻塞方式来读写文件的方式，读写效率比较高。libaio的读写过程简单说来就是你发出一个读写请求，然后你可以开始做其他事情，当读写过程结束时libaio会通知你你的这次请求已经完成（而select模型是告诉你读写已经就绪）
+Bison是一种通用的解析器生成器，它将一个LALR（1）上下文无关文法的语法描述转换成一个C程序来解析该语法。一旦您精通Bison，您就可以使用它来开发广泛的语言解析器，从简单的桌面计算器到复杂的编程语言。
+Git ：快速、可缩放的分布式版本控制系统
+cd  /usr/src 
+wget  https://sourceforge.net/projects/pcre/files/pcre/8.42/pcre-8.42.tar.gz
+#tar xzf  pcre-8.42.tar.gz
+#cd pcre-8.42
+#./configure --prefix=/usr/local/pcre
+#make
+#make install  
+wget http://archive.apache.org/dist/httpd/httpd-2.4.29.tar.gz 
+tar  xzf  httpd-2.4.29.tar.gz
+cd httpd-2.4.29 
+./configure --prefix=/usr/local/apache --enable-so --enable-rewrite  --with-pcre=/usr/local/pcre  --disable-proxy
+编译Apache，启用rewrite规则、启用动态加载库；
+编译的时候可以通过configure的参数来指定 默认是prefork模式
+--with-mpm=prefork|worker|event（）
+也可以编译为三种都支持，通过修改配置来更换。
+--enable-mpms-shared=all
+make  && make install
+sed -i  '/:80/aServerName localhost:80'  /usr/local/apache/conf/httpd.conf
+setenforce 0
+systemctl stop firewalld
+iptables -F 
+/usr/local/apache/bin/apachectl restart
+（2）	创建虚拟主机配置文件httpd-vhosts.conf，该文件默认已存在，只需去掉httpd.conf配置文件中#号即可，如 
+httpd.conf配置文件开启虚拟主机
+配置文件/usr/local/apache/conf/extra/httpd-vhosts.conf中代码设置为如下： 
+
+
+配置相应的目录权限
+ 
+配置完成后重新启动apache服务器，/usr/local/apache/bin/apachectl  restart 
+
+（3）	创建www.jf1.com及www.jf2.com发布目录，重启apache服务，并分别创建index.html页面
+mkdir  -p  /usr/local/apache2/htdocs/{jf1,jf2}/
+/usr/local/apache/bin/apachectl restart
+
+（4）	Windows客户端设置Hosts映射，将www.jf1.com、www.jf2.com与192.168.50.1128 IP进行映射绑定，映射的目的将域名跟IP进行绑定，在浏览器可以输入域名，不需要输入IP地址，绑定方法是在“C:\Windows\System32\drivers\etc”文件夹中，使用记事本编辑hosts文件，加入如下代码，如图10-4所示：
+10.0.0.4  www.jf1.com
+10.0.0.4  www.jf2.com
+
+（5）	源码安装MYSQL5.5.20方法，通过cmake、make、make install三个步骤实现。 
+wget http://down1.chinaunix.net/distfiles/mysql-5.5.20.tar.gz 
+tar –zxf mysql-5.5.20
+cd mysql-5.5.20
+yum install  gcc c ncurses-devel cmake libaio bison gcc-c++  git  ncurses-devel ncurses -y
+cmake  .  -DCMAKE_INSTALL_PREFIX=/usr/local/mysql55/ \
+-DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+-DMYSQL_DATADIR=/data/mysql \
+-DSYSCONFDIR=/etc \
+-DMYSQL_USER=mysql \
+-DMYSQL_TCP_PORT=3306 \
+-DWITH_XTRADB_STORAGE_ENGINE=1 \
+-DWITH_INNOBASE_STORAGE_ENGINE=1 \
+-DWITH_PARTITION_STORAGE_ENGINE=1 \
+-DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+-DWITH_MYISAM_STORAGE_ENGINE=1 \
+-DWITH_READLINE=1 \
+-DENABLED_LOCAL_INFILE=1 \
+-DWITH_EXTRA_CHARSETS=1 \
+-DDEFAULT_CHARSET=utf8 \
+-DDEFAULT_COLLATION=utf8_general_ci \
+-DEXTRA_CHARSETS=all \
+-DWITH_BIG_TABLES=1 \
+-DWITH_DEBUG=0
+make &&make install
+cd /usr/local/mysql55/ 
+\cp  -f  support-files/my-large.cnf /etc/my.cnf
+\cp  -f support-files/mysql.server /etc/init.d/mysqld 
+chkconfig --add mysqld 
+chkconfig --level 35 mysqld on
+mkdir -p  /data/mysql
+useradd  mysql
+/usr/local/mysql55/scripts/mysql_install_db  --user=mysql --datadir=/data/mysql --basedir=/usr/local/mysql55/
+chown -R mysql /data/mysql/
+ln  -s  /usr/local/mysql55/bin/* /usr/bin/
+service  mysqld  restart
+ 
+查看MYSQL启动进程
+
+
+（6）	PHP服务安装，PHP需与Apache、MySQL进行整合，如图12-3所示，参数命令如下：
+cd /usr/src 
+wget http://mirrors.sohu.com/php/php-5.3.28.tar.bz2 
+tar jxf  php-5.3.28.tar.bz2 
+cd php-5.3.28 ；
+vim  /usr/src/php-5.3.28/Zend/zend_language_parser.h       修改317行，改为(void *compiler_globals)
+yum install libxml2 libxml2-devel –y 
+./configure --prefix=/usr/local/php5  --with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  --with-apxs2=/usr/local/apache/bin/apxs
+mysqldnd即mysql native driver简写,即是由PHP源码提供的mysql驱动连接代码.它的目的是代替旧的libmysql驱动.
+MYSQLI 叫做 “MySQL增强扩展”。
+PDO是一个应用层抽象类,底层和mysql server连接交互需要mysql驱动的支持. 也就是说无论你使用了何种驱动,都可以使用PDO.。
+--with-apxs2=/usr/local/apache2/bin/apxs 
+--apxs是apache1.x版本安装的链接版本 –apxs2是apache2.x版本的链接
+make && make install
+ 
+图12-3 LAMP源码编译整合
+Apache+PHP源码整合
+为了能让Apache发布PHP页面，需要将PHP安装完成后的libphp5.so模块与Apache进行整合，vim httpd.conf编辑配置文件，加入如下代码：
+LoadModule         php5_module modules/libphp5.so
+AddType         application/x-httpd-php  .php
+DirectoryIndex     index.php index.html index.htm
+（7）	测试Apache+PHP环境
+创建PHP测试页面，在/usr/local/apache/htdocs目录下创建index.php测试页面，执行如下命令自动创建：
+Vim  /usr/local/apache/htdocs/index.php
+<?php
+phpinfo()；
+?>
+/usr/local/apache/bin/apachectl  restart 
+重新启动Apache服务，浏览器输入 Apache WEB的IP访问，如图12-4所示，即代表LAMP源码环境整合成功。 Apache+PHP测试页面
+
+（8）	Discuz PHP论坛安装
+LAMP源码整合完毕之后，Dicuz官网下载Discuz开源PHP软件包，将软件包解压并发布在Apache Htdocs发布目录，代码如下：
+cd     /usr/src ；
+wget  http://download.comsenz.com/DiscuzX/3.3/Discuz_X3.3_SC_UTF8.zip
+unzip  Discuz_X3.3_SC_UTF8.zip   -d  /usr/local/apache/htdocs/ 
+cd    /usr/local/apache/htdocs/
+mv upload/* /usr/local/apache/htdocs/jf1
+chmod 757  -R  data/  uc_server/  config/  uc_client/
+重新启动apache
+MYSQL数据库命令行中创建PHP连接MYSQL的用户及密码，命令如下：
+create database ultrax charset=utf8;
+grant all on discuz.* to root@'localhost' identified by "123456";
+
+访问www.jf1.com 进行虚拟主机的访问，配置discuz论坛设置数据库。
+数据库服务器地址填写本机的地址
+数据库名字填写在主数据库创建的discuz
+用户名填写数据库用户名root
+数据库密码123456
+ 
+配置成功后可以看到如下 
+（9）	Word press论坛安装
+LAMP源码整合完毕之后，Word press官网下载Word press开源PHP软件包，将软件包解压并发布在Apache Htdocs发布目录，代码如下：
+cd     /usr/src ；
+wget  https://cn.wordpress.org/wordpress-4.9.4-zh_CN.tar.gz 
+unzip  wordpress-4.9.4-zh_CN.tar.gz   /usr/local/apache/htdocs/ 
+cd    /usr/local/apache/htdocs/ 
+mv wordpress/* /usr/local/apache/htdocs/jf2
+chmod 757  -R   /usr/local/apache/htdocs/jf2
+重新启动apache
+
+MYSQL数据库命令行中创建PHP连接MYSQL的用户及密码，命令如下：
+create database wordpress charset=utf8;
+grant all on wordpress.* to root@'localhost' identified by "123456";
+UR0p&4HThldAPD845h
+访问www.jf2.com 进行虚拟主机的访问，配置discuz论坛设置数据库。
+数据库服务器地址填写本机的地址
+数据库名字填写在主数据库创建的discuz
+用户名填写数据库用户名root
+数据库密码123456
+通过浏览器访问Apache www.jf2.com如图12-5所示，选择“我同意”
+ 
+图12-5 wordpress安装界面一
+ 进入如图12-6界面，数据库安装，如果不存在则需要新建数据库并授权。
+ 
+图12-6 Discuz安装界面二
+MYSQL数据库命令行中创建PHP连接MYSQL的用户及密码，命令如下：
+create database wordpress charset=utf8;
+grant all on wordpress.* to root@'localhost' identified by "123456";
+ 
+单击下一步，直至安装完成，浏览器自动跳转至如图12-7所示界面：
+ 
+1.3 	LAMP+Mysql主从复制实战
+ 
+图11-12 MYSQL主从原理架构图
+Mysql主从复制集群至少需要2台数据库服务器，其中一台为Master库，另外一台为Slave库，MYSQL主从数据同步是一个异步复制的过程，要实现复制首先需要在master上开启bin-log日志功能，bin-log日志用于记录在Master库中执行的增、删、修改、更新操作的sql语句，整个过程需要开启3个线程，分别是Master开启IO线程，Slave开启IO线程和SQL线程，具体主从同步原理详解如下：
+	Slave上执行slave start，Slave IO线程会通过在Master创建的授权用户连接上至Master，并请求master从指定的文件和位置之后发送bin-log日志内容；
+	Master接收到来自slave IO线程的请求后，master IO线程根据slave发送的指定bin-log日志position点之后的内容，然后返回给slave的IO线程。
+	返回的信息中除了bin-log日志内容外，还有master最新的binlog文件名以及在binlog中的下一个指定更新position点；
+	Slave IO线程接收到信息后，将接收到的日志内容依次添加到Slave端的relay-log文件的最末端，并将读取到的Master端的 bin-log的文件名和position点记录到master.info文件中，以便在下一次读取的时候能告知master从响应的bin-log文件名及最后一个position点开始发起请求；
+	Slave Sql线程检测到relay-log中内容有更新，会立刻解析relay-log的内容成在Master真实执行时候的那些可执行的SQL语句，将解析的SQL语句并在Slave里执行，执行成功后，Master库与Slave库保持数据一致。
+	系统环境准备
+Master：10.0.0.6
+Slave： 10.0.0.7
+1.3.1  Mysql主库操作
+（1）	源码安装MYSQL5.5.20方法，通过cmake、make、make install三个步骤实现。 
+wget http://down1.chinaunix.net/distfiles/mysql-5.5.20.tar.gz 
+tar –zxf mysql-5.5.20
+yum install gcc c ncurses-devel libaio bison gcc-c++  git cmake  ncurses-devel ncurses -y
+cmake  .  -DCMAKE_INSTALL_PREFIX=/usr/local/mysql55/ \
+-DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+-DMYSQL_DATADIR=/data/mysql \
+-DSYSCONFDIR=/etc \
+-DMYSQL_USER=mysql \
+-DMYSQL_TCP_PORT=3306 \
+-DWITH_XTRADB_STORAGE_ENGINE=1 \
+-DWITH_INNOBASE_STORAGE_ENGINE=1 \
+-DWITH_PARTITION_STORAGE_ENGINE=1 \
+-DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+-DWITH_MYISAM_STORAGE_ENGINE=1 \
+-DWITH_READLINE=1 \
+-DENABLED_LOCAL_INFILE=1 \
+-DWITH_EXTRA_CHARSETS=1 \
+-DDEFAULT_CHARSET=utf8 \
+-DDEFAULT_COLLATION=utf8_general_ci \
+-DEXTRA_CHARSETS=all \
+-DWITH_BIG_TABLES=1 \
+-DWITH_DEBUG=0
+make &&make install
+cd /usr/local/mysql55/ 
+cp support-files/my-large.cnf /etc/my.cnf
+cp support-files/mysql.server /etc/init.d/mysqld 
+chkconfig --add mysqld 
+chkconfig --level 35 mysqld on
+mkdir -p  /data/mysql
+useradd  mysql
+chown -R mysql /data/mysql/
+/usr/local/mysql55/scripts/mysql_install_db --user=mysql --datadir=/data/mysql/ --basedir=/usr/local/mysql55/
+ln  -s  /usr/local/mysql55/bin/* /usr/bin/
+service  mysqld  restart
+ 
+查看MYSQL启动进程
+
+（1）	Master安装及配置 
+Master端使用源码安装MySQL-5-5版本软件后，在/etc/my.cnf 配置文件[mysqld]段中加入如下代码，然后重启MYSQL服务即可。如果在安装时cp my-large.cnf  /etc/my.cnf，则无需添加如下代码：
+server-id = 1
+log-bin = mysql-bin
+Master端/etc/my.cnf完整配置代码如下：
+[client]
+port		= 3306
+socket	= /tmp/mysql.sock
+[mysqld]
+port		= 3306
+socket	= /tmp/mysql.sock
+skip-external-locking
+key_buffer_size = 256M
+max_allowed_packet = 1M
+table_open_cache = 256
+sort_buffer_size = 1M
+read_buffer_size = 1M
+read_rnd_buffer_size = 4M
+myisam_sort_buffer_size = 64M
+thread_cache_size = 8
+query_cache_size= 16M
+thread_concurrency = 8
+log-bin=mysql-bin
+binlog_format=mixed
+server-id	= 1
+[mysqldump]
+quick
+max_allowed_packet = 16M
+[mysql]
+no-auto-rehash
+[myisamchk]
+key_buffer_size = 128M
+sort_buffer_size = 128M
+read_buffer = 2M
+write_buffer = 2M
+[mysqlhotcopy]
+interactive-timeout
+Master数据库服务器命令行中 创建tongbu用户及密码并设置权限，执行如下命令，查看bin-log文件及position点，如图11-13所示：
+grant  replication  slave  on *.* to  'tongbu'@'%'  identified by  '123456'；
+show  master  status；
+grant  all  on  *.* to  root@'%'  identified  by  "123456";
+ 
+MYSQL Master授权用户
+1.3.2  Mysql从库操作
+（1）	Slave端使用源码安装MySQL-5-5版本软件后，在/etc/my.cnf 配置文件[mysqld]段中加入如下代码，然后重启MYSQL服务即可。
+（2）	源码安装MYSQL5.5.20方法，通过cmake、make、make install三个步骤实现。 
+wget http://down1.chinaunix.net/distfiles/mysql-5.5.20.tar.gz 
+tar –zxf mysql-5.5.20
+yum install -y gcc c ncurses-devel cmake libaio bison gcc-c++  git
+yum  install  cmake  ncurses-devel ncurses -y
+cmake  .  -DCMAKE_INSTALL_PREFIX=/usr/local/mysql55/ \
+-DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+-DMYSQL_DATADIR=/data/mysql \
+-DSYSCONFDIR=/etc \
+-DMYSQL_USER=mysql \
+-DMYSQL_TCP_PORT=3306 \
+-DWITH_XTRADB_STORAGE_ENGINE=1 \
+-DWITH_INNOBASE_STORAGE_ENGINE=1 \
+-DWITH_PARTITION_STORAGE_ENGINE=1 \
+-DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+-DWITH_MYISAM_STORAGE_ENGINE=1 \
+-DWITH_READLINE=1 \
+-DENABLED_LOCAL_INFILE=1 \
+-DWITH_EXTRA_CHARSETS=1 \
+-DDEFAULT_CHARSET=utf8 \
+-DDEFAULT_COLLATION=utf8_general_ci \
+-DEXTRA_CHARSETS=all \
+-DWITH_BIG_TABLES=1 \
+-DWITH_DEBUG=0
+make &&make install
+cd /usr/local/mysql55/ 
+cp support-files/my-large.cnf /etc/my.cnf
+cp support-files/mysql.server /etc/init.d/mysqld 
+chkconfig --add mysqld 
+chkconfig --level 35 mysqld on
+mkdir -p  /data/mysql
+useradd  mysql
+chown -R mysql /data/mysql/
+/usr/local/mysql55/scripts/mysql_install_db --user=mysql --datadir=/data/mysql/ --basedir=/usr/local/mysql55/
+ln  -s  /usr/local/mysql55/bin/* /usr/bin/
+service  mysqld  restart
+ 
+
+如果在安装时cp my-large.cnf  /etc/my.cnf，则需修改server-id，MASTER与Slave端server-id不能一样，Slave端也无需开启bin-log功能： 
+server-id = 2
+Slave端/etc/my.cnf完整配置代码如下：
+[client]
+port		= 3306
+socket	= /tmp/mysql.sock
+[mysqld]
+port		= 3306
+socket	= /tmp/mysql.sock
+skip-external-locking
+key_buffer_size = 256M
+max_allowed_packet = 1M
+table_open_cache = 256
+sort_buffer_size = 1M
+read_buffer_size = 1M
+read_rnd_buffer_size = 4M
+myisam_sort_buffer_size = 64M
+thread_cache_size = 8
+query_cache_size= 16M
+thread_concurrency = 8
+server-id	= 2
+[mysqldump]
+quick
+max_allowed_packet = 16M
+[mysql]
+no-auto-rehash
+[myisamchk]
+key_buffer_size = 128M
+sort_buffer_size = 128M
+read_buffer = 2M
+write_buffer = 2M
+[mysqlhotcopy]
+interactive-timeout
+Slave指定Master IP、用户名、密码、bin-log文件名（mysql-bin.000028）及position（257），代码如下：
+change master to master_host='10.0.0.6',master_user='tongbu',master_password='123456',master_log_file='mysql-bin.000028',master_log_pos=257；
+grant all on *.* to root@'%' identified by "123456"; 
+在slave启动slave start，并执行show slave status\G查看Mysql主从状态：
+slave  start；
+show  slave  status\G 
+查看Slave端IO线程、SQL线程状态均为YES，代表Slave已正常连接Master实现同步：
+Slave_IO_Running: Yes
+Slave_SQL_Running: Yes
+
+
+
+在masterCentos7.4-3端创建mysql_db_test数据库和t0表，如图11-14所示，命令如下：
+create database mysql_ab_test charset=utf8；
+show databases；
+use mysql_ab_test；
+create table t0 (id varchar(20),name varchar(20))；
+show tables；
+ 
+MYSQL master创建数据库和表
+Slave服务器查看是否有mysql_ab_test数据库和t0的表，如果存在则代表Slave从Master复制数据成功，证明MYSQL主从配置至此已经配置成功，如图11-15所示： 图11-15 MYSQL Slave自动同步数据
+在Master服务器的t0表插入两条数据，在slave查看是否已同步，master上执行如下图11-16所示：
+insert into t0 values (“001”,”wugk1”)；
+insert into t0 values (“002”,”wugk2”)；
+select * from t0；
+ 
+图11-16 MYSQL Master insert数据
+Slave端执行查询命令，如图11-17所示，表示在Master插入的数据已经同步到Slave端： 图11-17 MYSQL Slave数据已同步
+1.3.3  主服务器配置安装
+（10）	Apache WEB安装，先安装apr、apr-utils等基础库包。
+yum install apr-devel apr-util-devel  gcc c ncurses-devel cmake libaio bison gcc-c++  git   pcre*  -y
+PCRE是一个Perl库，包括 perl 兼容的正则表达式库。PCRE是一个轻量级的函数库，比Boost之类的正则表达式库小得多。
+CMake是一种跨平台编译工具，比make更为高级，使用起来要方便得多。CMake主要是编写CMakeLists.txt文件，然后用cmake命令将CMakeLists.txt文件转化为make所需要的makefile文件，最后用make命令编译源码生成可执行程序或共享库（so(shared object)）。
+ncurses是字符终端下屏幕控制的基本库，mysql登录时使用到了相应的功能。
+libaio是Linux下的一个异步非阻塞接口，它提供了以异步非阻塞方式来读写文件的方式，读写效率比较高。libaio的读写过程简单说来就是你发出一个读写请求，然后你可以开始做其他事情，当读写过程结束时libaio会通知你你的这次请求已经完成（而select模型是告诉你读写已经就绪）
+Bison是一种通用的解析器生成器，它将一个LALR（1）上下文无关文法的语法描述转换成一个C程序来解析该语法。一旦您精通Bison，您就可以使用它来开发广泛的语言解析器，从简单的桌面计算器到复杂的编程语言。
+Git ：快速、可缩放的分布式版本控制系统
+cd  /usr/src 
+wget  https://sourceforge.net/projects/pcre/files/pcre/8.42/pcre-8.42.tar.gz
+#tar xzf  pcre-8.42.tar.gz
+#cd pcre-8.42
+#./configure --prefix=/usr/local/pcre
+#make
+#make install  
+wget http://archive.apache.org/dist/httpd/httpd-2.4.29.tar.gz 
+tar  xzf  httpd-2.4.29.tar.gz
+cd httpd-2.4.29 
+./configure --prefix=/usr/local/apache --enable-so --enable-rewrite  --with-pcre=/usr/local/pcre  
+编译Apache，启用rewrite规则、启用动态加载库；
+编译的时候可以通过configure的参数来指定 默认是prefork模式
+--with-mpm=prefork|worker|event（）
+也可以编译为三种都支持，通过修改配置来更换。
+--enable-mpms-shared=all
+make  && make install
+sed -i  '/:80/aServerName localhost:80'  /usr/local/apache/conf/httpd.conf
+setenforce 0
+systemctl stop firewalld
+iptables -F 
+/usr/local/apache/bin/apachectl restart
+（11）	创建虚拟主机配置文件httpd-vhosts.conf，该文件默认已存在，只需去掉httpd.conf配置文件中#号即可，如图10-3所示： 
+httpd.conf配置文件开启虚拟主机
+
+配置文件/usr/local/apache/conf/extra/httpd-vhosts.conf中代码设置为如下：
+ 
+配置完成后重新启动apache服务器，/usr/local/apache/bin/apachectl  restart 
+
+（12）	创建www.jf1.com及www.jf2.com发布目录，重启apache服务，并分别创建index.html页面
+mkdir  -p  /usr/local/apache2/htdocs/{jf1,jf2}/
+/usr/local/apache/bin/apachectl restart
+
+（13）	Windows客户端设置Hosts映射，将www.jf1.com、www.jf2.com与192.168.50.1128 IP进行映射绑定，映射的目的将域名跟IP进行绑定，在浏览器可以输入域名，不需要输入IP地址，绑定方法是在“C:\Windows\System32\drivers\etc”文件夹中，使用记事本编辑hosts文件，加入如下代码，如图10-4所示：
+10.0.0.4  www.jf1.com
+10.0.0.4  www.jf2.com
+
+主服务器php安装
+（14）	PHP服务安装，PHP需与Apache、MySQL进行整合，如图12-3所示，参数命令如下：
+cd /usr/src 
+wget http://mirrors.sohu.com/php/php-7.2.4.tar.gz
+yum -y install autoconf  freetype gd libmcrypt libpng libpng-devel libjpeg libxml2 libxml2-devel zlib curl curl-devel 
+tar xzf  php-7.2.4.tar.gz 
+cd php-7.2.4 ；
+./configure --prefix=/usr/local/php5  --with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  --with-apxs2=/usr/local/apache/bin/apxs
+make && make install
+ 
+图12-3 LAMP源码编译整合
+（15）	Apache+PHP源码整合
+为了能让Apache发布PHP页面，需要将PHP安装完成后的libphp7.so模块与Apache进行整合，vim httpd.conf编辑配置文件，加入如下代码：
+LoadModule         php5_module modules/libphp5.so
+AddType         application/x-httpd-php  .php .phtml
+DirectoryIndex     index.php index.html index.htm
+（16）	测试Apache+PHP环境
+创建PHP测试页面，在/usr/local/apache/htdocs目录下创建index.php测试页面，执行如下命令自动创建：
+Vim  /usr/local/apache/htdocs/index.php
+<?php
+phpinfo()；
+?>
+/usr/local/apache/bin/apachectl  restart 
+重新启动Apache服务，浏览器输入 Apache WEB的IP访问，如图12-4所示，即代表LAMP源码环境整合成功。
+ Apache+PHP测试页面
+
+（17）	Discuz PHP论坛安装
+LAMP源码整合完毕之后，Dicuz官网下载Discuz开源PHP软件包，将软件包解压并发布在Apache Htdocs发布目录，代码如下：
+cd     /usr/src ；
+wget  http://download.comsenz.com/DiscuzX/3.3/Discuz_X3.3_SC_UTF8.zip
+unzip  Discuz_X3.3_SC_UTF8.zip   -d  /usr/local/apache/htdocs/ 
+cd    /usr/local/apache/htdocs/
+mv upload/* /usr/local/apache/htdocs/jf1
+chmod 757  -R  data/  uc_server/  config/  uc_client/
+重新启动apache
+
+MYSQL数据库命令行中创建PHP连接MYSQL的用户及密码，命令如下：
+create database discuz charset=utf8;
+grant all on discuz.* to root@'localhost' identified by "123456";
+
+访问www.jf1.com 进行虚拟主机的访问，配置discuz论坛设置数据库。
+数据库服务器地址填写本机的地址
+数据库名字填写在主数据库创建的discuz
+用户名填写数据库用户名root
+数据库密码123456
+ 
+配置成功后可以看到如下
+
+ 
+（18）	Word press论坛安装
+LAMP源码整合完毕之后，Word press官网下载Word press开源PHP软件包，将软件包解压并发布在Apache Htdocs发布目录，代码如下：
+cd     /usr/src ；
+wget  https://cn.wordpress.org/wordpress-4.9.4-zh_CN.tar.gz 
+unzip  wordpress-4.9.4-zh_CN.tar.gz   /usr/local/apache/htdocs/ 
+cd    /usr/local/apache/htdocs/ 
+mv wordpress/* /usr/local/apache/htdocs/jf2
+chmod 757  -R   /usr/local/apache/htdocs/jf2
+重新启动apache
+
+MYSQL数据库命令行中创建PHP连接MYSQL的用户及密码，命令如下：
+create database wordpress charset=utf8;
+grant all on wordpress.* to root@'localhost' identified by "123456";
+
+访问www.jf2.com 进行虚拟主机的访问，配置discuz论坛设置数据库。
+数据库服务器地址填写本机的地址
+数据库名字填写在主数据库创建的discuz
+用户名填写数据库用户名root
+数据库密码123456
+通过浏览器访问Apache www.jf2.com如图12-5所示，选择“我同意”
+ 
+图12-5 wordpress安装界面一
+ 进入如图12-6界面，数据库安装，如果不存在则需要新建数据库并授权。
+ 
+图12-6 Discuz安装界面二
+MYSQL数据库命令行中创建PHP连接MYSQL的用户及密码，命令如下：
+create database wordpress charset=utf8;
+grant all on wordpress.* to root@'localhost' identified by "123456";
+
+查看从服务器检查SHOW PROCESSLIST语句的输出，直到你看到Has read all relaylogwaiting for the slave I/O thread to update it
+ 
+
+确保从服务器已经处理了日志中的所有语句停止：stop  slave io_thread;
+ 
+
+在被提升为主服务器的从服务器上，发出 STOP SLAVE和RESET MASTER和RESET SLAVE操作。
+ 
+然后重启mysql服务。:service   mysqld  restart
+
+1.4 	MySQL主从分离原理
+MYSQL读写分离的原理其实就是让Master数据库处理事务性增、删除、修改、更新操作（CREATE、INSERT、UPDATE、DELETE），而让Slave数据库处理SELECT操作，MYSQL读写分离前提是基于MYSQL主从复制，这样可以保证在Master上修改数据，Slave同步之后，WEB应用可以读取到Slave端的数据。
+
