@@ -1,0 +1,28 @@
+JF2112班DAY-07课程笔记
+硬盘设备是由大量的扇区组成，每个扇区容量512字节，第一扇区最为重要，保存主引导记录和分区表信息。分别是主引导记录占用446，分区表占用64字节，结束符2字节，其中分区表中每记录一个信息占用16字节，
+最多只有四个分区，为了解决分区数不够，衍生出扩展分区。扩展分区可以用来创建逻辑分区，逻辑分区最多128个。
+硬件设备	文件名称
+IDE设备	/dev/hd[a-d]
+SCSI/SATA/U盘/SAS	/dev/sd[a-p]
+软驱	/dev/fd[0-1]
+打印机	/dev/lp[0-15]
+光驱	/dev/cdrom
+鼠标	/dev/mouse
+磁带机	/dev/st0或/dev/ht0
+IDE硬盘接口在Linux中设备名为/dev/hda，SAS、SCSI、SATA硬盘接口在Linux中设备名为sda，高效云盘硬盘接口会识别为/dev/vda等。
+	硬盘的最小存储单位叫做Sector（扇区），每个Sector储存512字节。操作系统在读取硬盘的时候，不会逐个Sector的去读取，这样效率非常低，为了提升读取效率，操作系统会一次性连续读取多个Sector，
+  即一次性读取多个Sector称为一个Block（块）。
+由多个Sector组成的Block是文件存取的最小单位。Block的大小常见的有1KB、2KB、4KB，Block在Linux中常设置为4KB，即连续八个Sector组成一个Block。
+ 
+
+硬盘分区分别分成（superblock）、inode、block，
+Superblock：文件系统的整体信息，包含inode值和block块的使用的大小、剩余大小，相关的格式及信息。（记录inode和block的对应关系）
+Inode：记录文件的属性和信息，同时会把文件的存储的位置生成一个编号（inode值：记录数据的存储位置（block在分区中所在位置））
+Block块是存储文件的内容。因为每个 inode 与 block 都有编号，而每个文件都会占用一个 inode ，inode 内则有文件数据放置的 block 号码。如果能够找到文件的 inode，就可以找到该文件所放置数据的block号码，从而读取该文件内容。
+ln  硬链接实验
+ 
+ln  -s  软连接 
+ 
+文件软连接修改快捷方式就是修改源文件，但是删除链接文件并不会影响源文件。
+ 
+
