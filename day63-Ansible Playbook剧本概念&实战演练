@@ -1,0 +1,61 @@
+1、Ansible Playbook剧本概念&实战演练
+1）Ansible可以使用单个模块，通过AD-HOC点对点模式去远程机器配置和管理，也可以将多个模块进行组合，形成剧本（playbook）任务；
+2）通过Playbook任务，能够集中管理多个任务，将多个任务关联起来，从而实现更加复杂工作，满足生产环境的各个需求，提高运维人员管理服务器效率；
+3）Playbook剧本的产物YAML文件，类似XML接口（Tomcat）文件，内部有固定语法、参数等，要掌握常用的YAML语法编写，掌握满足运维管理方向的语法即可；
+4）Ansible-Playbook剧本案例一：（远程拷贝SHELL脚本，并且执行SHELL脚本）
+- hosts: all
+  remote_user: root
+  tasks:
+  - name: copy nginx SHELL to Remote Server
+    copy: src=/root/auto_install_nginx_v1.sh dest=/tmp/ mode=645 owner=root group=root
+  - name: check Nginx SHELL File /tmp/
+    shell: ls -l /tmp/auto_install_nginx_v1.sh
+  - name: Jfedu Nginx WEB Server Install Process.
+    shell: /bin/sh /tmp/auto_install_nginx_v1.sh
+5）Ansible-Playbook剧本案例二：（远程源码部署Nginx WEB软件）
+- hosts: all
+  remote_user: root
+  tasks:
+  - name: Jfedu Pcre-devel and Zlib LIB Install.
+    yum:  name=pcre-devel,pcre,zlib-devel state=installed
+  - name: Jfedu  Nginx WEB  Server Install Process.
+    shell: pkill nginx;cd /tmp;rm -rf nginx-1.12.0.tar.gz;wget http://nginx.org/download/nginx-1.12.0.tar.gz
+;tar xzf nginx-1.12.0.tar.gz;cd nginx-1.12.0;./configure --prefix=/usr/local/nginx;make;make install;/usr/lo
+cal/nginx/sbin/nginx
+6）Ansible-Playbook剧本案例三:（判断notify前面的任务是否执行成功或者是否存在，继而执行handlers之后的任务）
+- hosts: 192.168.0.123
+  remote_user: root
+  tasks:
+      - name: Nginx server Install 2017
+        copy: src=/etc/profile dest=/etc/
+        notify:
+            - nginx1
+            - nginx2
+  handlers:
+      - name: nginx1
+        shell: cd /tmp;rm -rf nginx-1.12.0.tar.gz;wget http://nginx.org/download/nginx-1.12.0.tar.gz;tar xzf
+ nginx-1.12.0.tar.gz;cd nginx-1.12.0;./configure --prefix=/usr/local/nginx;make;make install
+      - name: nginx2
+        shell: /usr/local/nginx/sbin/nginx
+7）Ansible-Playbook剧本案例四:（支持template模板&变量定义和引用实战）
+- hosts: 192.168.0.12*
+  remote_user: root
+  tasks:
+      - name: Nginx server Install 2017
+        file: path=/usr/local/nginx/ state=directory
+        notify:
+            - nginx install
+            - nginx config
+  handlers:
+      - name: nginx install
+        shell: cd /tmp;rm -rf nginx-1.12.0.tar.gz;wget http://nginx.org/download/nginx-1.12.0.tar.gz;tar xzf
+ nginx-1.12.0.tar.gz;cd nginx-1.12.0;./configure --prefix=/usr/local/nginx;make;make install;/usr/local/ngin
+x/sbin/nginx
+      - name: nginx config
+        template: src=/root/nginx.conf.j2 dest=/usr/local/nginx/conf/nginx.conf
+2、Ansible配置文件概念剖析&性能优化
+1）Ansible主配置文件：/etc/ansible/ansible.cfg，主要是用于Ansible程序参数、配置、模板统一调整，全局的配置文件；
+2）
+
+
+
