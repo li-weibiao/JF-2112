@@ -1,0 +1,99 @@
+1.1 	解析LAMP的原理
+Apache默认只能发布静态网页，而LAMP组合可以发布静态+PHP动态页面。
+静态页面通常指不与数据库交互页面，页面很少去改动，常见静态界面.html,.gif,.jpg,.txt,.js,.css。
+动态界面通常指与数据库发生交互，内容丰富，经常发生变化，随着数据库的更新而更新，常见的动态界面：.jsp,.php,.do,.asp,.apsx。
+LINUX划分文件的分类，f ：普通文件，d：目录，b ：存储块设备文件，l：链接文件，C ：设备文件
+
+用户按下网站回车之后，出现一些后台操作分别有什么？
+1）	用户通过浏览器发起HTTP请求，访问apache的80端口，浏览器会检查当前本地浏览器中是否有缓存（ip+域名关系）。
+2）	浏览器会向本地发起系统调用，读取本地hosts文件。Hosts文件的功能，可以绑定对应域名和IP之间的关系，如果有要请求的域名会直接访问对应的IP地址，访问服务器的ip：80端口，发起tcp三次握手（建立数据通道），三次握手之后，发送和请求HTTP数据。
+3）	如果本地hosts中没有，没有对应的域名和ip对应关系，将域名交给DNS（8.8.8.8）去解析，首先会去想本地DNS，本地dns中有对应的关系之后可以直接访问。没有直接请求根DNS，递归查询，比如先去找.com的根dns，请求会一级一级的转发，第二级是找baidu.com，第三级开始找www.baidu.com，才能返回域名和IP的对应关系给本地DNS，本地DNS会将IP和域名的关系缓存在本地。
+4）	下一次请求时会直接访问本地的DNS就可以，本地DNS会直接返回请求。
+5）	当用户在浏览器地址中输入域名或者域名+PHP页面，向HTTP  WEB服务器Apache发起HTTP请求，WEB服务器接受该请求，并根据其后缀判断如果请求的页面是以.php结尾，WEB服务器从硬盘或者内存中取出该PHP文件，将其发送给PHP引擎程序。
+6）	PHP引擎程序将会对WEB服务器传送过来的文件进行扫描并根据命令从后台读取、处理数据、并动态地生成相应的HTML页面。然后PHP引擎程序将生成的HTML页面返回给WEB服务器，最终WEB服务器将HTML页面返回给客户端浏览器，浏览器基于MIME类型进行解析展示给用户页面。
+
+2）使用yum方式部署LAMP架构
+yum  install  httpd  httpd-devel  mysql mysql-server mysql-devel  php php-devel php-mysql  -y
+service httpd restart
+service mysqld restart
+
+mysql主从建立失败排查记录:
+1.排查客户度和服务端网络是否互通？
+2.排查防火墙和selinux是否关闭？
+3.排查mysql服务是否开启？
+4.查看mysql数据库是否创建授权用户并设置密码，并查看bin-log文件和position点，是否正常？
+5.查看master端和slave端/etc/my.cnf配置的server-id是否正确？
+6.查看slave数据库是否指定了master端，校对log-file文件和pos点，slave是否启动？
+1.2 	主从宕机解决办法：
+（1）	忽略错误后，继续同步:
+此种方法适用于主从库数据内容相差不大，或者要求数据可以不完全统一的情况，数据要求不严格的情况。
+Master端执行如下命令，将数据库设置全局读锁，不允许写入新数据：
+flush  tables  with  read  lock；
+Slave端停止Slave I/O及sql线程，同时将同步错误的SQL跳过1次，跳过会导致数据不一致，最后启动start  slave，同步状态恢复，命令如下：
+stop slave；
+set  global sql_slave_skip_counter =1；
+start slave；
+
+使用mysqlbinlog命令来导入和导出库
+mysqlbinlog   /var/lib/mysql/mariadb-relay-bin.000002  > /root/1.txt
+[root@localhost ~]# mysql 
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 8
+Server version: 5.5.56-MariaDB MariaDB Server
+Copyright (c) 2000, 2017, Oracle, MariaDB Corporation Ab and others.
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+MariaDB [(none)]> source /root/1.txt
+
+
+
+（2）	重新做主从同步，完全同步：
+此种方法适用于主从库数据内容相差很大，或者要求数据完全统一的情况，数据需完全保持一致。
+Master端执行如下命令，将数据库设置全局读锁，不允许写入新数据：
+flush  tables  with  read  lock；
+Master端基于mysqldump、xtrabackup工具进行数据库将完整的数据库备份，
+导出数据库
+导出数据其实非常方便，比如将 MySQL 中的 zabbix 这个数据库导出到当前文件夹，首先切换到 root 用户，然后再切换到 Document 这个目录，这样就可以直接将数据库导出到这个目录了，当然，指定特定目录也是可以的，接着执行
+mysqldump -uroot -ppassword zabbix>zabbix.sql
+导入数据库
+导入到 Linux 系统数据库也很简单，可以使用客户端导入，这里使用命令行的形式导入，首先使用 WIN + R快捷键调出“运行”窗口，然后输入cmd打开命令行终端，依次执行如下命令
+mysql -uroot -ppassword zabbix  < zabbix.sql
+也可以用shell脚本或python脚本实现定时备份，备份成功之后，将完整的数据导入至丛库，重新配置主从关系，当Slave端的IO线程、SQL线程均为YES之后，最后将Master端读锁解开即可，解锁命令如下：
+unlock tables；
+1.3 	通过binlog日志来恢复数据
+1、开启mysql的binlog日志（默认情况下没有开启）
+#vim /etc/my.cnf下添加一行（也可以另外指定binlog日志的路径）
+log-bin = mysql-bin
+#mysql5.7默认情况下，binlog日志文件默认放在/usr/local/mysql/data/目录下
+2、对binlog日志的相关操作命令
+2.1用mysqlbinlog可以查看binlog日志里的信息
+./mysqlbinlog --no-defaults /usr/local/mysql/data/mysql-bin.000003
+2.2刷新binlog日志
+mysql> flush logs; #这样就会多出一个最新的binlog日志
+2.3查看最新的 binlog日志
+mysql> show master status;
+2.4清空所有的binlog日志
+  mysql> reset master;
+ 
+3、根据位置恢复
+#mysqlbinlog --start-position=134 --stop-position=330 mysql-binglog.000001 > /root/test1.txt
+进入MYSQL导入
+mysql> source /root/test1.txt
+--start-position  起始位置
+--stop-position  结束位置   
+4、根据日期
+#./mysqlbinlog --start-date="2016-11-10 17:30:05" --stop-date="2016-11-10 18:00:00" mysql-binlog.000002  > /root/test2.sql
+mysql> source /root/test2.sql
+--start-date 起始时间
+--stop-date 结束时间
+或者
+#./mysqlbinlog --start-date="2016-11-10 17:30:05" --stop-date="2016-11-10 18:00:00" mysql-binlog.000002 | ./mysql -uroot -padmin test
+将mysql-bin.000002日志文件中从2016-11-10 17:30:05到2016-11-10 18:00:00截止的sql语句导入到mysql中test
+----如果有多个binlog文件，中间用空格隔开，打上完全路径
+5、补充mysqldump备份
+[root@jacky tmp]# /usr/local/mysql/bin/mysqldump -uroot -padmin test -l -F > /tmp/test.sql   #备份 数据库test到tmpl目录下的test.sql文件中
+-l 表示读锁，在备份的过程中mysql不能写入数据，从而保证数据的完整性
+-f 表示 flust logs,重新生成新的日志文件，当然也包括bin-log日志
+./mysql -uroot -padmin test  -v -f < /tmp/test.sql   #通过/tmp/test.sql文件恢复test数据库
+-v 查看导入的详细信息
+-f 导入过程中遇到错误，跳过，并继续往下执行
+
