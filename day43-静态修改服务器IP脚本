@@ -1,0 +1,82 @@
+1、SHELL编程项目实战一（静态修改服务器IP脚本）
+1）企业生产环境，Windows/Linux服务器静态配置IP，不会使用动态IP（经常变化），不利于后期的管理和维护；
+2）Linux服务器部署各种应用软件、WEB网站、业务系统，企业生产环境采用静态IP，如何去设置静态IP：
+	基于Kickstart软件绑定IP；
+	基于SHELL脚本自动配置IP；
+3）此处采用第二种方案，基于SHELL编程脚本自动配置Linux服务器IP地址，SHELL脚本该如何去编写呢？
+	明确脚本修改IP的网卡的名称：eth0|eth1|ens33；
+	创建备份目录，备份即将修改的网卡配置文件（便于回滚）；
+	网卡配置文件/etc/sysconfig/network-scripts/ifcfg-xxx；
+	判断网卡配置文件当前的IP是动态IP或者静态IP（IP类型）；
+	将DHCP类型的修改为Static，并且检测ONBOOT是否等于yes；
+	根据实际的需求，可以将原本static的IP修改为其他的IP（提供静态IP修改方法）；
+	修改为新的IP，新的IP是否被局域网服务器给占用呢？如何去判断IP是否被使用呢？
+	修改完IP地址以后，查看是否修改正确，确认正确，再重启网卡服务；
+	修改IP同时，设置服务器的DNS&关闭防火墙，修改服务器的主机名；
+2、SHELL编程项目实战二（Apache虚拟主机管理脚本）
+1）Apache是一款WEB软件，互联网使用最多的WEB服务器软件，可以发布网站代码，提供网页信息服务，用户通过浏览器可以访问；
+2）生产环境，使用Apache作为WEB服务器软件，需要部署多个虚拟主机，基于域名方式的虚拟主机，通过手工方式管理虚拟主机很繁琐，基于SHELL编程脚本自动化去实现管理；
+3）Apache安装思路：
+	官网下载Apache软件，版本：2.4.33；
+	Tar工具解压缩，并且进入解压目录；
+	预编译，./configure --prefix=/usr/local/apache2/ --enable-so --enable-ssl --enable-rewrite --enable-proxy
+	编译，make
+	安装，make install
+	启动Apache，/usr/local/apache2/bin/apachectl restart
+4）Apache虚拟主机配置：
+	Apache主配置文件添加Include vhosts.conf文件；
+	创建vhosts.conf虚拟主机配置文件；
+	添加基于域名的虚拟主机代码；
+	创建虚拟主机发布目录&引导页测试页面；
+5）Apache虚拟主机删除：
+	判断删除的域名配置是否在虚拟主机中；
+	如果虚拟主机中存在域名的配置，rm、vim、sed；
+	删除虚拟主机发布目录&测试页面代码&验证；
+6）Apache虚拟主机修改&增加：
+	修改某个虚拟主机域名-名称；
+	修改虚拟主机的发布目录所在位置；
+	向虚拟主机配置文件添加新的代码；
+3、SHELL编程实战四剑客（优化SHELL脚本）
+1）SHELL编程四剑客（三剑客），主要是基于Linux操作系统下四个工具（命令），主要是实现Linux常规指令无法完成的工作，可以完成工作中特殊的需求，四个工具：Find、Grep、Sed、AWK；
+2）SHELL编程四剑客之一的Find工具，主要是用于Linux操作系统下查找某个文件或者文件夹所在的具体位置；
+	Find工具的语法格式：find  path（路径） -option（参数） action（动作）；
+	PATH路径：可以任意路径、绝对路径、相对路径（/、/etc/、/home/）；
+	Option参数：-name（名称）、-type（类型）、-mtime（时间）、-size（大小）、-perm（权限）等；
+	Action动作：exec（承接）、xargs（承接）、print（打印）等；
+	例如查找Linux操作系统下ens33网卡名称的配置文件路径：
+find  /  -name  *ens33*
+find /etc/ -name *ens33*
+	查找Linux操作系统下所有的.rpm结尾的软件包所在的路径：
+find / -name *.rpm
+find / -name *.rpm -name libselinux*
+find / -name *.rpm -name libselinux* ! -name libselinux-utils*
+	找到如上软件包，并且将其拷贝至/tmp目录，指令如下：
+for i in `find / -name *.rpm -name libselinux* ! -name libselinux-utils*`;do cp $i /tmp/ ;done
+cp `find / -name *.rpm -name libselinux* ! -name libselinux-utils*` /tmp/
+cp $(find / -name *.rpm -name libselinux* ! -name libselinux-utils*) /tmp/
+find / -name *.rpm -name libselinux* ! -name libselinux-utils* -exec cp {} /tmp/ \;
+find / -name *.rpm -name uwsgi* |xargs -i cp {} /tmp/
+find / -name *.rpm -name libselinux* |xargs rm -rf （删除）
+find / -name *.rpm -name libselinux* ! -name libselinux-utils* |xargs rm -rf {} （删除）
+	Exec和xargs两个参数不同点：exec一次查找一个然后传递（不占资源），xargs全部找到再统一传递（占资源）；
+3）SHELL编程四剑客之二的Grep工具，主要是用于Linux操作系统下查找某个文件中关键词&过滤文本文件中某个字符，并且将其匹配的关键词所在行打印出来；
+	Grep工具的语法格式：grep  -option（参数） word（字符） file（文件）；
+	Option参数：-a（文本形式）、-c（统计）、-i（忽略大小写）、-v（反选|排除）、-n（行号）、-o（打印匹配词）、-E（扩展参数|egrep）、-A（after匹配之后行）、-B（before匹配之前行）、-C（context 匹配前和后的行）、-r（递归目录搜索）等；
+	File文件：匹配的对象，从什么地方进行匹配、文本文件、输出结果；
+	基于Grep查找Linux系统下/etc/passwd文件中是否包含www关键词：
+grep www /etc/passwd
+grep 'www' /etc/passwd
+grep "www" /etc/passwd
+ 
+	基于Grep工具匹配ifconfig查看的IP信息，只打印IP所在行：
+ifconfig|grep -w inet
+ifconfig|grep netmask
+ifconfig|grep 255
+ifconfig|grep -E "192|127"
+ 
+	匹配jfedu.txt列表文件中是否包含IP地址，指令如下：
+grep -E "[0-9]" jfedu.txt
+grep -E "[0-9]{3}" jfedu.txt
+grep -E "[0-9]{1,3}" jfedu.txt
+grep -E "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" jfedu.txt
+grep -E "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" jfedu.txt
