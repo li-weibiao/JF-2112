@@ -1,0 +1,46 @@
+1、SHELL编程四剑客实战（汇总回顾）
+1）Find工具，主要是用于查找Linux系统下某个文件和目录的具体位置，关键点&难点知识：
+	Find工具的语法格式：find path -option action；
+	Option参数：-name、-size、-type、-mtime、-atime、-perm、-maxdepth、-mmin等；
+	Find跟exec语法格式：find ... -exec cp {} /tmp \;（exec承接、\;结束符）；
+	Find跟xargs语法格式：find ... |xargs -i cp {} /tmp （|xargs承接、-i表示多个参数）；
+2）Grep工具，主要是用于查找Linux系统下某个文本文件中关键词，根据指定的条件或者字符从文本中去匹配，关键点&难点知识：
+	Grep工具的语法格式：grep  -option  word  file；
+	Option参数：-a、-c、-i、-n、-v、-A、-B、-C、-w、-o、-r、-l、-E等；
+	Grep正则表达式：.、*、.*、？、+、[0-9]、[A-Z]、[a-z]、{n}、{n,}、{n,m}、\<、\>、^、$、\w、\W、！；
+	Grep正则匹配IP地址：grep  -E “([0-9]{1,3}\.){3}[0-9]{1,3}”;
+	获取Linux系统所有网卡的IP地址，排除127.0.0.1 本地回环IP:
+ifconfig|grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}"|grep -vE "255|^127"
+3）SED工具，主要是用于处理和编辑（非交互模式）Linux系统下某个文本文件的内容或者指定的输出结果，关键点&难点知识：
+	SED工具的语法格式：sed -option ‘command’file；
+	Option参数：-i、-n、-v、-V、-e等；
+	Command命令：s/old/new/g、p、a、d、N、&、i、^、$、！、D、G、g；
+	SED生产环境中案例：SHELL脚本非交互模式的替换、涉及变量双引号、匹配文本内容、删除或者修改文本内容、文本内容范围处理；
+	例如生产环境统计Nginx日志从9.00-10.00的访问量，指令如下：
+sed -n '/2018:09:00/,/2018:10:00/'p access_20181026.log|wc -l
+4）AWK工具，主要是用于处理Linux系统下某个文本文件的内容或者指定的输出结果，关键点&难点知识：
+	AWK工具的语法格式：awk -option‘pattern + action’file；
+	Option参数：-F（格式输出）、-f（脚本文件）、-v（设置变量）等；
+	Pattern+Action：/word/、NR、NF、大于、小于、等于、BEGIN，Print；
+	AWK生产环境中案例：SHELL脚本文本内容处理、引用变量、打印文本列、打印文本行、文本内容范围处理；
+	例如生产环境统计Nginx日志从9.00-10.00的访问量，指令如下：
+awk '/2018:09:00/,/2018:10:00/' access_20181026.log|wc -l
+2、For和While循环语句实战
+1）While循环语句跟For循环语句，功能是类似的，都是用于对文件或者结果内容的循环；
+2）For循环通常是语法格式比较固定，FOR i in比较固定格式，给定参数会循环我们参数内容并结束；
+3）While循环语法格式随机的，主要以条件判断为主，满足条件执行循环中的指令，否则就退出循环；
+4）真实的生产环境中，根据实际的需求来定，对哪个循环实现更加的熟练，能够最简单的实现业务需求优先被使用；
+3、IF&Case条件判断语句实战
+1）IF条件语句，主要用于对给定的条件进行判断，满足匹配的执行相应的参数命令，不满足的话可以执行其他的参数命令；
+2）Case条件语句，主要用于条件判断时，可以设置多个条件（不是具体的某个数字大小对比、文件是否存在），可以进行选择，选择的内容可以是用户输入的参数；
+3）Case条件语句语法格式：
+case option（$1） in
+Pattern1)
+Command1;;
+Pattern2)
+Command2;;
+Pattern3)
+ Command3;;
+esac
+
+
