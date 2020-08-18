@@ -1,0 +1,79 @@
+JF2112班Linux基础篇回顾
+
+1、	Linux基础技能回顾一
+1）	学习Linux技术的目标，为了兴趣、爱好，更多的同学为了找一份高薪的工作，不要忘记自己的初心；
+2）	了解Windows操作系统：系统安装、日常操作（拷贝、粘贴、移动、删除、快捷方式）、安装软件、删除软件、磁盘分区，因为Linux是一款操作系统，跟Windows类似的；
+3）	学习Linux技术，了解Linux简介、Linux发展历史，Linux操作系统本质是Linux内核，约定成俗将Linux内核称为Linux操作系统，其实是不一样的；
+4）	学习Linux，要时刻记住跟Windows对比学习，进步飞快，学习Linux技术，不单纯是为了学习系统，是为了学习基于系统部署和维护各种应用软件、程序；
+5）	Windows操作系统以收费方式+图像界面+鼠标+键盘操作为主，而Linux操作系统以开源免费+字符界面+键盘操作为主，Windows操作系统主要用于个人办公使用，而Linux操作系统用于服务器领域、WEB网站、数据库、虚拟化、云计算、AI；
+6）	了解计算机（服务器）硬件的组成：CPU、内存、硬盘、主板、网卡、显示器、电源、显卡、鼠标、键盘、光驱等，计算机硬件是不能直接使用，基于硬件部署各个操作系统+驱动程序（小段代码、配置文件），借助驱动程序，系统可以使用硬件的资源；
+7）	学习Linux操作系统安装，Linux发行版（Linux内核版本）众多，CentOS开源、免费，80%互联网企业使用的操作系统，运维人员学习CentOS为了维护企业生产环境中Linux系统；
+8）	Linux操作系统安装硬盘分区，京东商城标准DELL R730服务器，300G硬盘分区的规范（不采用LVM）：
+	/boot分区 300MB
+称为启动分区，主要用于Linux系统启动时加载该分区的Linux内核文件、镜像文件，此分区大小不会增加、是固定的；
+	Swap分区 512MB
+虚拟内存分区，交换分区，当物理内存不足，应用程序会使用swap分区，会导致应用程序不稳定，读写性能一般，从硬盘中划出来，比内存读写低，一般该分区不推荐配置很大，给512MB、0MB；
+	/根分区  40GB
+整个Linux操作系统核心分区，主要是用于存储Linux系统必备的软件、库文件的，是整个文件和目录起始挂载点，根文件系统；
+	/data分区 剩余大小
+   称为数据分区，独立的分区，主要是用于应用软件、业务程序、WEB网站、数据库等数据存储；
+9）	硬盘为什么要分区&格式化呢？文件系统是什么呢？是文件系统类型呢？ 
+	默认硬件不能直接存储数据的，因为操作系统不知道如何存；
+	对硬盘进行分区，为了更好实现数据的存储、不同的软件程序存储，而且每个分区不影响其他的分区、安全性得到保障；
+	数据如何去存储呢？基于文件系统的类型，FAT32、NTFS、EXT3、EXT4、XFS等，可以约束和限制文件存储结构、文件存储大小、文件总数限制；
+10）	要熟练的管理Linux操作系统，掌握Linux启动顺序、启动级别，必须掌握Linux指令：
+	Linux基础指令一
+Clear、Ls、cd、pwd、man、hostanme、hostnamectl、help、sestatus、setenforce、at、crontab、set、env、export、date、ntpdate、source、mysql、mysqldump、sysctl、stat、alias、uname、ulimit；
+	Linux基础指令二
+Rename、history、ssh、ftp、shutdown、reboot、init、runlevel、diff、logout、halt、poweroff、exit、wc、tr、if、for、while、case、select、sort、uniq；
+	Linux文件管理
+Touch、mkdir、rmdir、vi、vim、rm、cp、mv、ln、echo、cat、more、less、head、tail、find、sed、grep、awk、scp、rsync、cut、file；
+	Linux用户权限
+Chmod、chown、chattr、lsattr、umask、useradd、userdel、groupadd、groupdel、usermod、groupmod、chgrp、setfacl、id、who、whoami、passwd、last、su、sudo；
+	Linux软件&服务
+RPM、yum、tar、zip、unzip、service、systemctl、make、cmake、gzip、rz、sz、wget、curl、chkconfig；
+	Linux资源管理
+Ps –ef、netstat、ss、lsof、kill、pkill、killall、top、free、uptime、df、du、fdisk、mount、umount、fsck.ext4、mkfs.ext4、parted、iostat、vmstat、iotop、iftop、sar、resizefs、dd；
+	Linux网络相关
+Ping、ifconfig、ip addr、route、telnet、arp、dig、nslookup、traceroute、nmcli、setup、ifup、ifdown、ethtool、nmap、tcpdump；
+11）	作为Linux初学者，掌握用户和权限的管理；
+	Linux是多用户的、多任务的操作系统；
+	Linux对文件和目录管理，用户角色：user、group、other（ugo）；
+	每一种用户角色可以拥有三种权限：Read、Write、Execute（RWX）；
+	角色授权：chown、chgrp，权限授权：chmod、chattr；
+	RWX使用二进制权限位01表示，可以转换为十进制，R=4、W=2、X=1；
+	Linux设计之初，默认对文件设置为666权限、对目录设置为777权限，为什么创建文件和目录默认为644和755呢？Linux系统默认权限掩码：0022（022）；
+	除了常规的权限之外，suid、sgid、sticky；
+ 
+	Suid普通用户可以像文件的拥有者（root）的权限运行指令；
+	Sticky只对目录生效，谁新建谁删除，不能删除别人的文件；
+2、	Linux基础技能回顾二
+1）	学习Linux技术最终为了学习基于Linux操作系统部署和维护各种应用软件和程序；
+2）	Linux平台下基础服务：
+NTP、DHCP、Samba、NFS、MFS、Vsftpd、Apache、MYSQL、MariaDB、PHP、Nginx、Zabbix、Redis、Tomcat、Resin、LVS、Jenkins、Keepalived、KVM、Docker、K8S、OpenStack、Ansible、SaltStack、ELK、MQ、ZK、SVN、GIT、IPtables、Firewalld、DNS、Rsync、OpenSSH、Maven、Squid；
+3）	Linux下软件服务学习技巧和步骤：
+	了解该软件的功能和应用场景，主要是用于哪些场合，为什么要学习该软件？
+	该软件的工作流程或者工作原理是什么呢？如何工作的？
+	学习该软件如何基于Linux平台部署、安装，启动、停止、重启、更新、验证访问等操作；
+	掌握软件主要的目录和配置文件的参数含义，了解每个指令功能和用途；（多看、多实战、多练习）
+	除了掌握配置文件每个参数的含义之外，对重点的参数进行调整和优化，使其性能发挥最大；
+	对软件服务进行日常的维护、保证软件服务高效、稳定的运行，出现错误或者故障，第一时间要能解决问题；
+4）	Linux软件众多，对软件进行分类，分为两大类：二进制软件包、源代码软件包；
+	二进制软件包
+其软件包的内容包含很多bin文件、二进制文件，无需编译安装，可以直接使用或者简单安装即可使用，典型的后缀命名：.rpm、.zip、.tar、.tar.gz、.war等；
+	源代码软件包
+其软件包的内容包含很多.c、.h、.cpp、.o、源代码文件，必须经过编译安装，不能直接使用，典型的后缀命名：.tar、.tar.gz、.tar.bz2、.zip等；
+5）	基于RPM和YUM工具管理以.rpm结尾的二进制软件包，区别如下：
+	RPM软件包管理工具
+该工具管理的软件包通常要求提前下载至本地目录，不能自动解决软件包之间的依赖关系，需要手工解决，不能校验软件包的正确性；
+	YUM软件包管理工具
+该工具管理的软件包通常无需提前下载至本地目录，可以自动解决软件包之间的依赖关系，无需手工解决，可以校验软件包的正确性；
+6）	基于YUM二进制管理和基于MAKE源码包管理，各种软件包工具有什么区别呢？
+	基于YUM二进制管理
+其部署的方式简单、快捷、高效，可以校验软件包的正确性，可以自动解决软件包之间依赖关系，不能定制软件的特定模块和功能，默认不能指定软件安装的路径，安装之后的文件和目录相对比较分散，不利于后期的维护和管理；
+	基于MAKE源码包管理
+其部署的方式复杂、繁琐、低效，不能校验软件包的正确性，不能自动解决软件包之间依赖关系，可以定制软件的特定模块和功能，可以指定软件安装的路径，安装之后的文件和目录相对比较统一，利于后期的维护和管理；
+
+
+
+
