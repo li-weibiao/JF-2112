@@ -1,0 +1,113 @@
+JF2112班DAY-05课程笔记
+1.1 	Tar命令讲解
+tar命令是压缩和解压缩命令，常用于打包文件和解压缩文件，方便拷贝和移动。
+-z ：使用gzip格式压缩。(tar.gz、tgz.)
+-j ：使用bzip2格式压缩（bz2，bzip2）
+-x ：解包或者解压缩
+-t  ：查看包内文件
+-c ：建立一个压缩包或者tar包
+-v ：可视化显示过程
+-f ：后面跟文件名，（filename）
+-g ：建立新 GNU 格式的备份（建立一个快照文件）
+--exclude ：压缩时排除文件
+-C ：指定一个解压缩的位置
+-p ：保留原文件属性
+tar		-cvf 	jfedu.tar.gz		jfedu 		打包jfedu文件或者目录，打包后名称jfedu.tar.gz；
+tar		-tf  	jfedu.tar.gz		  	查看jfedu.tar.gz包中内容；
+tar		-rf  	jfedu.tar.gz		jfedu.txt		将jfedu.txt文件追加到jfedu.tar.gz中
+tar		-xvf 	jfedu.tar.gz		解压jfedu.tar.gz程序包；
+tar		-czvf 	jfedu.tar.gz		jfedu 		使用gzip格式打包并压缩jfedu目录；
+tar		-cjvf 	jfedu.tar.bz2		jfedu 		使用bzip2格式打包并压缩jfedu目录；
+tar 	-czf    jfedu.tar.gz * -X      list.txt 	    使用gzip格式打包并压当前目录所有文件，排除list.txt中记录的文件；
+tar 	-czf    jfedu.tar.gz 	*  --exclude=zabbix-3.2.4.tar.gz --exclude=nginx-1.12.0.tar.gz       使用gzip格式打包并压当前目录所有文件及目录，排除zabbix-3.2.4.tar.gz和nginx-1.12.0.tar.gz软件包。
+ 
+ 
+基于检查目录或者文件的atime、mtime、ctime属性是否被修改。文件及目录时间属性详解如下：
+	文件被访问的时间(Access time,atime)；
+	文件内容被改变的时间（Modified time，mtime)；
+	文件写入、权限更改的时间（Change time，ctime)。
+使用stat命令可以查看文件或者目录的属性时间
+ 
+增量备份和全量备份
+全量备份：就是一次性将系统或者目录中的文件全部备份，内容较多，建议一周或者15天备份一次。
+增量备份：就是在全量备份的基础上进行备份，就是将全量备份后又生成的文件进行备份，只备份相对于全量备份的增加部分，内容较少，建议每天或者半天备份一次。
+Zip压缩命令和unzip解压缩命令
+zip的参数：
+	-r ： 递归目录
+	-u ： 更新新文件
+	-l ：指定压缩的级别（0-9）
+	-v：显示过程和版本信息
+	-d ：从压缩文件中删除文件
+	-x ：排除一下的文件
+unzip命令参数
+	-l ：显示压缩文件内所包含的文件
+	-d ：解压缩到指定目录
+	-t ：检测压缩文件是否正确
+	-v ：显示过程
+	-C ：不区分压缩文件内大小写
+ 
+
+1.2 	软件包管理
+Rpm软件包管理器：rpm包是预先在linux机器上编译好并打包好的文件，安装起来方便快捷。
+缺点：安装环境必须和编译时的环境是一致的或者相当的，包和包之间存在严重的依赖关系，安装是必须按照依赖关系来安装，卸载时必须安装依赖关系来卸载。
+RPM企业案例演示：
+rpm  -q  			httpd 						 检查httpd包是否安装；
+rpm  -ql  			httpd 						 查看软件安装的路径；
+rpm  -qi  			httpd 						 查看软件安装的版本信息；
+rpm  -e  			httpd  						 卸载httpd软件；
+rpm  -e  --nodeps    httpd  						 强制卸载httpd；
+rpm  -qa|grep      	httpd                      	 检查httpd相关的软件包是否安装。
+rpm  -ivh  			httpd-2.4.10-el7.x86_64.rpm	     安装httpd软件包；
+rpm  -Uvh 			httpd-2.4.10-el7.x86_64.rpm	     升级httpd软件；
+rpm  -ivh  --nodeps    httpd-2.4.10-el7.x86_64.rpm	 不依赖其他软件包；
+ 
+1.3 	Yum前端软件包管理
+	YUM工具能够从指定的服务器自动下载RPM包并且安装，还可以自动处理依赖性关系。
+YUM命令工具指南，YUM格式为：
+YUM [command] [package] -y|-q 其中的[options]是可选。-y安装或者卸载出现YES时，自动确认yes；-q不显示安装的过程。
+yum install httpd 				    	    安装httpd软件包；
+yum search 								YUM搜索软件包；
+yum list 	httpd   					        显示指定程序包安装情况httpd；
+yum list 		 						    显示所有已安装及可安装的软件包；
+yum remove  httpd				 		删除程序包httpd；
+yum erase   httpd				 		    删除程序包httpd；
+yum update 		 						内核升级或者软件更新；
+yum update  httpd 						更新httpd软件；
+yum check-update 						    检查可更新的程序；
+yum info    httpd   					    显示安装包信息httpd；
+yum provides 							    列出软件包提供哪些文件；
+yum provides "*/rz" 					    列出rz命令由哪个软件包提供；
+yum grouplist       					    查询可以用groupinstall安装的组名称；
+yum groupinstall "Chinese Support"  	        安装中文支持；
+yum groupremove "Chinese Support"  		删除程序组Chinese Support；
+yum deplist httpd 						    查看程序httpd依赖情况；
+yum clean   packages 					    清除缓存目录下的软件包；
+yum clean   headers 					    清除缓存目录下的headers；
+yum clean   all       					清除缓存目录下的软件包及旧的headers。
+（1）	执行命令yum grouplist，检查groupinstall的软件组名，如图6-8所示：
+ 
+图6-8 YUM Grouplist显示组安装名称
+可用性环境组:
+最小的安装
+计算节点
+基础架构服务器
+文件和打印服务器
+基本的Web服务器
+虚拟化主机
+服务器与GUI
+GNOME桌面
+KDE等离子工作区
+发展和创造性的工作站
+可用的组:
+兼容库
+控制台网络工具
+开发工具
+图形化管理工具
+传统的UNIX兼容
+科学支持
+安全工具
+智能卡的支持
+系统管理工具
+系统管理
+完成
+
