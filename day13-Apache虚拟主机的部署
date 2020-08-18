@@ -1,0 +1,156 @@
+第1章 	Apache虚拟主机的部署
+Apr（可移植运行库）主要实现为上层的应用提供一个可以跨多操作系统底层的接口库。
+Apr接口库使用的目的是对应其他的服务的接口（api（程序接口））来使用，比如说php、tomcat、nginx。
+Pcre是一个perl库，是一个正则表达式库，兼容perl的所有正则表达式，匹配字符使用的正则表达式，主要用于文本处理。
+在一台服务器上发布多个网站，也称为部署多个虚拟主机，虚拟主机的部署方法：
+1.	单IP多个端口
+2.	多ip单端口
+3.	单个ip单个端口不同域名（应用广泛）
+启动apache警告
+ 
+没有开启80端口的域名监听，解决方法：
+Echo “ServerName localhost:80” >> /usr/local/apache/conf/httpd.conf
+代表开启监听本地域名localhost
+
+ 
+其中基于同一端口不同域名的方式在企业中得到广泛的使用和应用，如下为基于一个端口不同域名，在一台Apache WEB服务器上部署多个网站，步骤如下：
+（1）	创建虚拟主机配置文件httpd-vhosts.conf，该文件默认已存在，只需去掉httpd.conf配置文件中#号即可，如图10-3所示：
+ 
+# Virtual hosts
+Include conf/extra/httpd-vhosts.conf
+#引用vhosts文件
+<VirtualHost *:80>
+    DocumentRoot "/usr/local/apache/htdocs/jf1"
+    ServerName www.jf1.com
+    ServerAlias  www.jf100.com www.jf1000.com www.jf10000.com
+    ErrorLog "logs/jf1.com-error_log"
+    CustomLog "logs/jf1.com-access_log" common
+</VirtualHost>
+
+<VirtualHost *:80>
+    DocumentRoot "/usr/local/apache/htdocs/jf2"
+    ServerName www.jf2.com
+    ErrorLog "logs/jf2.example.com-error_log"
+    CustomLog "logs/jf2.example.com-access_log" common
+</VirtualHost>
+配置hosts文件
+Windows:C:\Windows\System32\drivers\etc
+ 
+
+
+
+
+
+Linux /etc/hosts的配置文件
+ 
+
+Hosts文件的作用是配置本地解析域名的，假设本地主机要访问域名，Windows浏览器（首先访问缓存数据）或者Linux工具首先访问本地hosts，hosts文件里面写了ip和域名对应解析关系。
+Httpd-vhosts.conf参数详解：
+NameVirtualHost *:80	开启虚拟主机，并且监听本地所有网卡接口的80端口；
+<VirtualHost *:80>									虚拟主机配置起始；
+    ServerAdmin support@jfedu.net					管理员邮箱；
+    DocumentRoot "/usr/local/apache2/htdocs/jf1"	    该虚拟主机发布目录；
+    ServerName www.jf1.com							虚拟主机完整域名；
+    ErrorLog "logs/www.jf1.com_error_log"			    错误日志路径及文件名；
+    CustomLog "logs/www.jf1.com_access_log" common	访问日志路径及文件名；
+</VirtualHost>										虚拟主机配置结束。
+设置项目的默认访问目录
+<Directory "/test/jf1">  
+          Options Indexes MultiViews  
+Options这个子句用来说明一些主要的设置，目前可以使用的设置有Indexes，Includes，FollowSymLinks，ExecCGI，MultiView，当然还有两个最简单的选择就是None和All。
+　　None是禁止所有选择，而All 允许上面的所有Options。一般我们主要关心的是Indexes 和FollowSymLinks。Indexes 是设定是否允许在目录下面没有index.html 的时候显示目录，而FollowSymLinks 决定是否可以通过符号连接跨越DocumentRoot。
+          AllowOverride None  
+　AllowOverride 定义是否允许各个目录用目录中的.htaccess(后面解释)覆盖这里设定的Options。它的选择有Options，FileInfo，AuthConfig，Limit 或者它们的组合，当然还有None 和All。
+          Order allow,deny  
+它有两种用法，即Order allow,deny 或者Order deny,allow。简单地说，它用来设置是先执行deny 还是先执行allow，例如，Order deny,allow 意味着先看deny 行，再看allow 行，这样如果deny from all 再allow from 202.112.58.0/24 后来的allow子句就会超越deny 而对202.112.58.x 打开访问。
+          Allow from all  
+这两个选项和Order 一起使用，Allow 允许某个地址来的连接请求，Deny 则禁止这个请求，例如在Order deny，allow 的情况下，Deny from all，Allow from 192.168.12.0/24 表示只有192.168.12.x 的用户可以访问这个目录。
+          DirectoryIndex index.html 
+    配置默认的网页后缀
+</Directory>
+（2）	创建www.jf1.com及www.jf2.com发布目录，重启apache服务，并分别创建index.html页面：
+mkdir  -p  /usr/local/apache2/htdocs/{jf1,jf2}/
+/usr/local/apache2/bin/apachectl restart
+echo  "<h1> www.jf1.com  Pages</h1>" >/usr/local/apache2/htdocs/jf1/index.html
+echo  "<h1> www.jf2.com  Pages</h1>" >/usr/local/apache2/htdocs/jf2/index.html
+（3）	Windows客户端设置Hosts映射，将www.jf1.com、www.jf2.com与192.168.111.131 IP进行映射绑定，映射的目的将域名跟IP进行绑定，在浏览器可以输入域名，不需要输入IP地址，绑定方法是在“C:\Windows\System32\drivers\etc”文件夹中，使用记事本编辑hosts文件，加入如下代码，如图10-4所示：
+192.168.111.131  www.jf1.com
+192.168.111.131  www.jf2.com
+ 
+图10-4 Windows主机Hosts配置
+（4）	浏览器访问www.jf1.com、www.jf2.com如图10-5（a）、10-5（b）所示，至此Apache基于多域名虚拟主机配置完毕，如果还需添加虚拟主机，直接拷贝其中一个虚拟主机配置、修改WEB发布目录即可：
+ 图10-5（a） www.jf1.com网站返回内容
+ 图10-5（b） www.jf2.com网站返回内容
+Apache配置文件详解
+Apache的配置文件是Apache WEB难点，读者需要掌握配置文件中每个参数的含义，才能理解并在日常运维中去解决Apache遇到的故障，如下为Apache配置文件详解：
+1）Global Environment---全局环境配置，决定Apache服务器的全局参数
+2）Main server configuration---主服务配置，相当于是Apache中的默认Web站点，如果我们的服务器中只有一个站点，那么就只需在这里配置就可以了。
+3）Virtual Hosts---虚拟主机，虚拟主机不能与Main Server主服务器共存，当启用了虚拟主机之后，Main Server就不能使用了
+
+ServerTokens OS 					    显示服务器的版本和操作系统内核版本；在出现错误页的时候是否显示服务器操作系统的名称，ServerTokens Prod为不显示
+ServerRoot  "/usr/local/apache2/" 	    Apache主配置目录；服务启动之后自动将目录改变为当前目录，在后面使用到的所有相对路径都是想对这个目录下
+PidFile run/httpd.pid				    PidFile进程文件；这是系统识别一个进程的方法，系统中httpd进程可以有多个，但这个PID对应的进程是其他的父进程
+Timeout 60							不论接收或发送，当持续连接等待超过60秒则该次连接就中断；服务器与客户端断开的时间
+KeepAlive Off						    关闭持续性的连接；（因为每次连接都得三次握手，如果是访问量不大，建议打开此项，如果网站访问量比较大关闭此项比较好），修改为：KeepAlive On 表示允许程序性联机
+MaxKeepAliveRequests 100			    当KeepAlive设置为On的时候，该数值可以决定此次连接能够传输的最大传输数量；
+KeepAliveTimeout 65					当KeepAlive设置为On的时候，该连接在最后一次传输后等待延迟的秒数；
+<IfModule prefork.c>				    Prefork MPM引擎配置段；
+StartServers      8					默认启动Apache工作进程数；开始服务时启动8个进程，最小空闲5个进程，最多空闲20个进程。
+MinSpareServers   5					最小空闲进程数；
+MaxSpareServers   20				    最大空闲进程数；
+ServerLimit      4096				    Apache服务器最多进程数；服务器允许配置进程数的上限
+MaxClients      4096				    每秒支持的最大客户端并发；限制同一时刻客户端的最大连接请求数量超过的要进入等候队列。
+MaxRequestsPerChild  4000			    每个进程能处理的最大请求数；每个进程生存期内允许服务的最大请求数量，0表示永不结束
+</IfModule>
+<IfModule worker.c>					Worker MPM引擎配置段；
+StartServers        8				    默认启动Apache工作进程数；
+MaxClients         4000				每秒支持的最大客户端并发；
+MinSpareThreads     25				最小空闲线程数；
+MaxSpareThreads     75 				最小空闲线程数；
+ThreadLimit							每个子进程可能配置的线程上限
+ThreadsPerChild     75				每个进程启动的线程数；
+MaxRequestsPerChild  0				每个进程能处理的最大请求数，0表示无限制；
+</IfModule>
+
+为Apache配置线程访问，即每对WEB服务访问启动一个线程，这样对内存占用率比较小。
+ServerLimit服务器允许配置进程数的上限。
+ThreadLimit每个子进程可能配置的线程上限
+StartServers启动两个httpd进程，
+MaxClients同时最多能发起250个访问，超过的要进入队列等待，其大小有ServerLimit和ThreadsPerChild的乘积决定
+ThreadsPerChild每个子进程生存期间常驻执行线程数，子线程建立之后将不再增加
+MaxRequestsPerChild每个进程启动的最大线程数，如达到限制数时进程将结束，如置为0则子线程永不结束
+LoadModule  mod_version.so  		    静态加载apache相关模块；
+ServerAdmin support@jfedu.net		    管理员邮箱，网站异常，错误信息会发生至该邮箱；
+Listen 80 							监听的端口，如有多块网卡，默认监听所有网卡
+123 150 LoadModule auth_basic_module modules/mod_auth_basic.so 
+...... 
+201 LoadModule version_module modules/mod_version.so   启动时加载的模块 mod_access已经更名为mod_authz_host
+Include conf.d/*.conf 										加载的配置文件
+DocumentRoot   "/usr/local/apache2/htdocs/"  Apache网站默认发布目录；
+User apache 
+Group apache				启动服务后转换的身份，在启动服务时通常以root身份，然后转换身份，这样增加系统安全
+ServerName www.example.com:80                    默认是不需要指定的，服务器通过名字解析过程来获得自己的名字，但如果解析有问题（如反向解析不正确），或者没有DNS名字，也可以在这里指定IP地址，当这项不正确的时候服务器不能正常启动。前面启动Apache时候提示正在启动 httpd：httpd: apr_sockaddr_info_get() failed forjustin httpd: Could not reliably determine the server's fully qualified domain name, using 127.0.0.1forServerName，解决方法就是启动该项把www.example.com:80修改为自己的域名或者直接修改为localhost
+
+<Directory "/data/webapps/www1">	    设置/data/webapps/www1目录权限；
+    AllowOverride All
+    Options -Indexes FollowSymLinks
+    Order allow,deny
+    Allow from all
+</Directory>
+AllowOverride 						设置为None时，目录中.htaccess 文件将被完全忽略，当指令设置为All时，.htaccess文件生效；.htaccess文件(或者"分布式配置文件"）提供了针对目录改变配置的文件， 以作用于此目录及其所有子目录。作为用户，所能使用的命令受到限制。
+Options -Indexes FollowSymLinks		禁止浏览目录，去掉”-“,表示浏览目录，常用于下载站点；
+Order 	allow,deny 					默认情况下禁止所有客户机访问；
+Order   deny,allow 					默认情况下允许所有客户机访问；
+Allow   from all					    允许所有客户机访问。
+DirectoryIndex index.html index.html.var   		指定所要访问的主页的默认主页名字，默认首页文件名为index.html
+AccessFileName .htaccess 		定义每个目录下的访问控制文件名，缺省为.htaccess
+TypesConfig /etc/mime.types		用于设置保存有不同MIME类型数据的文件名
+DefaultType text/plain		默认的网页的类型
+ErrorLog logs/error_log      错误日志存放的位置
+LogLevel warn			Apache日志的级别
+
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined 
+LogFormat "%h %l %u %t \"%r\" %>s %b" common 
+LogFormat "%{Referer}i -> %U" referer 
+LogFormat "%{User-agent}i" agent     定义了日志的格式，并用不同的代号表示
+
