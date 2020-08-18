@@ -1,0 +1,119 @@
+第1章 	Nginx虚拟主机
+网络IO模型，在计算机系统中I/O就是输入(Input)和输出(Output)的意思。
+网络IO可以抽象成用户态和内核态之间的数据交换。一次网络数据读取操作（read），可以拆分成两个步骤：1）网卡驱动等待数据准备好（内核态）2）将数据从内核空间拷贝到进程空间（用户态）。
+网络I/O读取的处理方式：
+1.阻塞IO 			     blocking IO
+2.非阻塞IO 			  nonblocking IO
+3.输入输出多路复用    IO multiplexing
+4.信号驱动IO 		  signal driven IO
+5.异步IO       		  asynchronous IO
+Linux2.6内核支持nginx 使用epoll模型，epoll是多路复用IO(I/O Multiplexing)中的一种方式
+Nginx采用epoll模型，异步非阻塞，而apache采用的是select模型。
+Select特点：select 选择句柄的时候，是遍历所有句柄，也就是说句柄有事件响应时，select需要遍历所有句柄才能获取到哪些句柄有事件通知，因此效率是非常低。
+epoll的特点：epoll对于句柄事件的选择不是遍历的，是事件响应的，就是句柄上事件来就马上选择出来，不需要遍历整个句柄链表，因此效率非常高。
+NGINX 请求原理：
+Nginx默认以80端口监听在服务器上，并且启动一个master进程，同时有master进程生成多个工作进程，当浏览器发起一个HTTP连接请求，每个进程都有可能处理这个连接，怎么做到的呢？怎么保证同一时刻一个HTTP请求被一个工作进程处理呢。
+首先每个worker进程都是从Master进程fork出来，在Master进程里面，建立好需要listen的socket（listenfd）之后，会fork出多个worker进程。
+所有worker进程的listenfd会在新连接到来时变得可读，为保证只有一个进程处理该连接，所有worker进程在注册listenfd读事件前抢accept_mutex，抢到互斥锁的那个进程注册listenfd读事件，在读事件里调用accept接受该连接。
+当一个worker进程在accept这个连接之后，就开始读取请求、解析请求、处理请求，产生数据后，再返回给客户端，最后才断开连接，这样形成一个完整的请求流程。
+1.1.1  升级nginx模块
+Nginx 旧版本信息
+[root@localhost sbin]# ./nginx  -V 
+nginx version: nginx/1.10.3
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-28) (GCC) 
+configure arguments: --prefix=/usr/local/nginx --with-http_stub_status_module
+
+[root@localhost sbin]# ./nginx -V 
+nginx version: nginx/1.12.2
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-28) (GCC) 
+built with OpenSSL 1.0.2k-fips  26 Jan 2017
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module
+1.2 	Nginx虚拟主机实战
+在真实的企业服务器环境中，为了充分利用服务器的资源，单台Nginx WEB服务器同时会配置N个网站，也可称之为配置N个虚拟域名的主机，即多个域名对应同一个80端口。
+在Nginx.conf中加入server代码，Nginx虚拟主机完整代码如下：
+worker_processes  1；
+events {
+    worker_connections  1024；
+}
+http {
+    include       mime.types；
+    default_type  application/octet-stream；
+    sendfile        on；
+    keepalive_timeout  65；
+#virtual hosts config 2017/5/18
+server {
+        listen       80；
+        server_name  www.jf1.com；
+        access_log  logs/jf1.access.log；
+        location / {
+            root   html/jf1；
+            index  index.html index.htm；
+        }
+}
+server {
+        listen       80；
+        server_name  www.jf2.com；
+        access_log  logs/jf2.access.log；
+        location / {
+            root   html/jf2；
+            index  index.html index.htm；
+        }
+
+ }
+}
+创建两个不同的目录mkdir -p /usr/local/nginx/html/{jf1,jf2}，然后分别在两个目录创建两个不同的index.html网站页面即可。通过Windows客户端配置hosts绑定IP与两个域名的对应关系，在IE浏览器访问测试效果，如图14-4（a）、14-4（b）所示：
+ 
+图14-4（a） Nginx 虚拟主机www.jf1.com
+ 图14-4（b） Nginx 虚拟主机www.jf2.com
+虚拟主机引用路径配置方法
+[root@localhost conf]# cat nginx.conf
+worker_processes  1;
+
+events {
+    worker_connections  1024;
+}
+
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    sendfile        on;
+
+    keepalive_timeout  65;
+
+    include  /usr/local/nginx/conf/jingfeng/*;
+
+    }
+[root@localhost conf]# cat jingfeng/www.jf1.com 
+server {
+        listen       80;
+        server_name  www.jf1.com;
+
+        location / {
+            root   html/jf1;
+            index  index.html index.htm;
+        }
+  
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+
+[root@localhost conf]# cat jingfeng/www.jf2.com 
+server {
+        listen       80;
+        server_name  www.jf2.com;
+
+        location / {
+            root   html/jf2;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
