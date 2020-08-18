@@ -1,0 +1,65 @@
+1、K8S云计算平台部署实战
+1)	构建一套K8S云计算平台，至少2台服务器（硬件服务器），基于Linux操作系统，最好Linux内核3.8+以上，推荐使用3.10内核版本，对应Linux操作系统发行版：RHEL7.x、CentOS7.x、Ubuntu16.x；
+2)	构建K8S底层2台硬件服务器的配置：
+	CPU：1C
+	MEM：1G
+	DISK：40GB
+	NET：1000Mb+10Gb
+3)	K8S云计算框架技术，C/S模式，Master节点和Node节点，1台Master节点，一台Node节点；
+	Master节点称为控制节点，用于管理Node节点，对Node节点上资源进行调度和管理的；
+	Node节点称为被控节点，用于创建Docker容器、虚拟机、管理容器、容器网络、镜像管理，主要用于提供云主机；
+4)	ETCD配置中心代码配置：
+ETCD是分布式的K-V（KEY-VALUE）存储系统，称为配置文件代码保存中心，主要是用于存储K8S+Flannel网络相关的信息的，例如存储Flannel网段信息，K8S读取ETCD的K-V值，默认配置文件：/etc/etcd/etcd.conf
+cat etcd.conf
+#数据目录；
+ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
+#本地监听网卡和端口；
+ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:2379"
+#ETCD名称；
+ETCD_NAME="default"
+#ETCD对外宣告访问地址；
+ETCD_ADVERTISE_CLIENT_URLS="http://192.168.0.124:2379"
+5)	K8S Master默认安装完毕，配置文件如下：
+ 
+	Apiserver：用于用户、控制端去操作NODE节点的入口，API访问接口；
+KUBE_API_ADDRESS="--insecure-bind-address=0.0.0.0"
+KUBE_API_PORT="--port=8080"
+KUBE_ETCD_SERVERS="--etcd-servers=http://192.168.0.124:2379"
+KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.254.0.0/16"
+KUBE_ADMISSION_CONTROL="--admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota"
+KUBE_API_ARGS=""
+6)	K8S Node默认安装完毕，配置文件如下：
+ 
+	Config：客户端系统配置文件，指向Master端apiserver接口文件；
+	Kubelet：Node节点的agent客户端配置文件，监听Agent程序，同时指定master端口apisever，接受Master端控制，可以管理本地Docker引擎服务（下载镜像、启动容器、映射访问）；
+	Proxy：代理配置文件，主要是用于后期服务均衡、服务访问使用的；
+7)	如上Master和Node节点配置完成，可以通过master端kubectl命令行执行如下操作：
+#查看当前node节点IP信息；
+kubectl get nodes
+#删除指定node节点信息；
+kubectl delete nodes/192.168.0.125
+ 
+8)	配置Master和Node节点网络连通，Node节点是用于Docker容器管理，启动Docker容器，为了实现宿主机跟其他宿主机上的Docker容器网络通信的话，引入Flannel软件，主要解决跨网络主机通信的；
+9)	Flannel网络读取ETCD配置中心的K-V，ETCD提前创建K-V信息，Flannel网络的配置段信息（IP段信息），在etcd配置中心创建K-V网段信息，命令如下：
+etcdctl  mk  /atomic.io/network/config '{"Network":"172.17.0.0/16"}'
+ 
+ 
+10)	部署K8S-UI报错信息一如下：
+message": "no endpoints available for service \"kubernetes-dashboard\
+	Apiserver接口无效，没有可用接口，查看API IP和端口配置；
+	查看Linux内核日志（master），命令如下：
+tail -fn 20 /var/log/messages
+ 
+	默认APISERVER需要安全认证，删除安全认证或者配置安全认证；
+KUBE_ADMISSION_CONTROL="--admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,ResourceQuota"
+service kube-apiserver restart
+ 
+#查看Node节点容器启动UI（容器）信息；
+kubectl  get  pods  --all-namespaces
+#查看具体的容器的操作日志内容；
+kubectl  describe  pods/kubernetes-dashboard-3583874300-4xn1h -n kube-system
+ 
+ 
+
+
+
