@@ -1,0 +1,272 @@
+	第1章 	CentOS7实战Kickstart批量系统部署
+1.1 	Kickstart使用背景介绍
+随着公司业务不断增加，经常需要采购新服务器，并要求安装Linux系统，并且要求Linux版本要一致，方便以后的维护和管理，每次人工安装linux系统会浪费掉更多时间，如果我们有办法能节省一次一次的时间岂不更好呢？
+大中型互联网公司一次采购服务器上百台,如果采用人工手动一台一台的安装,一个人得搞坏N张光盘,得多少个加班加点才能完成这项”艰巨”的任务呢,我们可以看到全人工来完成这样的工作太浪费人力了,有没有自动化安装平台呢,通过一台已存在的系统然后克隆或者复制到新的服务器呢。Kickstart可以毫不费力的完成这项工作。
+PXE(preboot execute environment，预启动执行环境)是由Intel公司开发的最新技术，工作于Client/Server的网络模式，支持工作站通过网络从远端服务器下载映像，并由此支持通过网络启动操作系统，在启动过程中，终端要求服务器分配IP地址，再用TFTP（trivial file transfer protocol）协议下载一个启动软件包到本机内存中执行。
+要使用kickstart安装平台，包括的完整架构为：Kickstart+DHCP+NFS(HTTP)+TFTP+PXE，从架构可以看出，大致需要安装的服务，例如dhcp、tftp、httpd、kickstart/pxe等。
+1.2 	什么是PXE
+PXE，全名Pre-boot Execution Environment，预启动执行环境；
+通过网络接口启动计算机，不依赖本地存储设备（如硬盘）或本地已安装的操作系统；
+由Intel和Systemsoft公司于1999年9月20日公布的技术；
+Client/Server的工作模式；
+PXE客户端会调用网际协议(IP)、用户数据报协议(UDP)、动态主机设定协议(DHCP)、小型文件传输协议(TFTP)等网络协议；
+PXE客户端(client)这个术语是指机器在PXE启动过程中的角色。一个PXE客户端可以是一台服务器、笔记本电脑或者其他装有PXE启动代码的机器（我们电脑的网卡）。
+1.3 	PXE的工作过程
+
+ 
+ 
+Kickstart工作示意图
+1.	PXE Client向DHCP发送请求 PXE Client从自己的PXE网卡启动，通过PXE BootROM(自启动芯片)会以UDP(简单用户数据报协议)发送一个广播请求，向本网络中的DHCP服务器索取IP。
+2.	DHCP服务器提供信息 DHCP服务器收到客户端的请求，验证是否来至合法的PXE Client的请求，验证通过它将给客户端一个“提供”响应，这个“提供”响应中包含了为客户端分配的IP地址、pxelinux启动程序(TFTP)位置，以及配置文件所在位置。
+3.	PXE客户端请求下载启动文件 客户端收到服务器的“回应”后，会回应一个帧，以请求传送启动所需文件。这些启动文件包括：pxelinux.0、pxelinux.cfg/default、vmlinuz、initrd.img等文件。
+4.	Boot Server响应客户端请求并传送文件 当服务器收到客户端的请求后，他们之间之后将有更多的信息在客户端与服务器之间作应答, 用以决定启动参数。BootROM由TFTP通讯协议从Boot Server下载启动安装程序所必须的文件(pxelinux.0、pxelinux.cfg/default)。default文件下载完成后，会根据该文件中定义的引导顺序，启动Linux安装程序的引导内核。
+5.	请求下载自动应答文件 客户端通过pxelinux.cfg/default文件成功的引导Linux安装内核后，安装程序首先必须确定你通过什么安装介质来安装linux，如果是通过网络安装(NFS, FTP, HTTP)，则会在这个时候初始化网络，并定位安装源位置。接着会读取default文件中指定的自动应答文件ks.cfg所在位置，根据该位置请求下载该文件。
+这里有个问题，在第2步和第5步初始化2次网络了，这是由于PXE获取的是安装用的内核以及安装程序等，而安装程序要获取的是安装系统所需的二进制包以及配置文件。因此PXE模块和安装程序是相对独立的，PXE的网络配置并不能传递给安装程序，从而进行两次获取IP地址过程，但IP地址在DHCP的租期内是一样的。
+6.	客户端安装操作系统 将ks.cfg文件下载回来后，通过该文件找到OS Server，并按照该文件的配置请求下载安装过程需要的软件包。 OS Server和客户端建立连接后，将开始传输软件包，客户端将开始安装操作系统。安装完成后，将提示重新引导计算机。
+1.4 	Kickstart企业实战配置
+基于YUM安装DHCP、TFTP、HTTPD服务，指令如下：
+yum  install  httpd   httpd-devel   dhcp*  tftp-server  xinetd -y
+配置tftp服务，开启tftp服务；
+cat>/etc/xinetd.d/tftp<<EOF
+TFTP服务是使用xinetd服务程序来管理的。xinetd服务可以用来管理多种轻量级的网络服务，而且具有强大的日志功能。
+service tftp
+{
+disable = no  
+socket_type = dgram
+protocol = udp
+wait = yes
+user = root
+server = /usr/sbin/in.tftpd   
+server_args = -u nobody -s /var/lib/tftpboot   
+per_source = 11
+cps = 100 2
+flags = IPv4
+}
+EOF
+tftp使用
+复制一个文件到tftp服务器目录，然后在主机启动tftp软件，进行简单测试。
+tftp 192.168.1.2
+tftp>get <download file> 
+tftp>put <upload file>
+tftp>q
+tftp命令用法如下
+tftp your-ip-address
+进入TFTP操作：
+•	connect：连接到远程tftp服务器
+•	mode：文件传输模式
+•	put：上传文件
+•	get：下载文件
+•	quit：退出
+•	verbose：显示详细的处理信息
+•	tarce：显示包路径
+•	status：显示当前状态信息
+•	binary：二进制传输模式
+•	ascii：ascii 传送模式
+•	rexmt：设置包传输的超时时间
+•	timeout：设置重传的超时时间
+•	help：帮助信息
+•	? ：帮助信息
+只需要把disable = yes改成disable = no即可，基于sed命令也可以实现：
+sed  -i  ‘/disable/s/yes/no/g’/etc/xinetd.d/tftp
+server = /usr/sbin/in.tftpd   #服务程序路径
+server_args = -u nobody -s /var/lib/tftpboot   #服务程序参数（这里指可以访问的tftp服务器下的目录）
+disable = no   #是否开机启动
+
+
+TFTP+PXE配置
+要实现远程安装系统，需要在TFTPBOOT目录指定相关PXE内核模块及相关参数，配置步骤如下：
+#挂载本地光盘
+mount     /dev/cdrom    /mnt/cdrom
+#安装syslinux必备文件
+yum  install   syslinux   syslinux-devel   -y
+# syslinux是一个功能强大的引导加载程序，而且兼容各种介质。SYSLINUX是一个小型的Linux操作系统，它的目的是简化首次安装Linux的时间，并建立修护或其它特殊用途的启动盘。如果没有找到pxelinux.0这个文件,可以安装一下。
+mkdir -p /var/lib/tftpboot/pxelinux.cfg/
+\cp /mnt/cdrom/isolinux/isolinux.cfg   /var/lib/tftpboot/pxelinux.cfg/default
+\cp /mnt/cdrom/isolinux/vesamenu.c32   /var/lib/tftpboot/
+\cp /mnt/cdrom/images/pxeboot/vmlinuz   /var/lib/tftpboot/
+\cp /mnt/cdrom/images/pxeboot/initrd.img   /var/lib/tftpboot/
+\cp /usr/share/syslinux/pxelinux.0    /var/lib/tftpboot/  
+chmod  644  /var/lib/tftpboot/pxelinux.cfg/default
+#配置TFTPBOOT引导文件：
+cat>/var/lib/tftpboot/pxelinux.cfg/default<<EOF
+default vesamenu.c32
+timeout 10
+display boot.msg
+menu clear
+menu background splash.png
+menu title CentOS Linux 7
+label linux
+  menu label ^Install CentOS Linux 7
+  menu default
+  kernel vmlinuz 
+  append initrd=initrd.img inst.repo=http://10.0.0.6/centos7 quiet ks=http://10.0.0.6/ks.cfg
+label check
+  menu label Test this ^media & install CentOS Linux 7
+  kernel vmlinuz
+  append initrd=initrd.img inst.stage2=hd:LABEL=CentOS\x207\x20x86_64 rd.live.check quiet
+EOF
+配置文件详解：
+default vesamenu.c32 #默认会加载一个菜单
+设置timeout 10 /*超时时间为10S */;
+# label指定在boot:提示符下输入的关键字，比如boot:linux[ENTER]，这个会启动label linux下标记的kernel和initrd.img文件。
+kernel vmlinuz  # 指定要启动的内核。同样要注意路径，默认是/tftpboot目录。
+192.168.0.131是kickstart服务器，/centos7是HTTPD共享linux镜像的目录，即linux存放安装文件的路径：
+ks.cfg是kickstart主配置文件;
+ksdevice=ens33代表当我们有多块网卡的时候，要实现自动化需要设置从ens33安装。
+TFTP配置完毕，由于是TFTP是非独立服务，需要依赖xinetd服务来启动，启动命令为：
+chkconfig    tftp  --level 35 on  && service  xinetd  restart 
+HTTPD+KICKSTART配置
+远程系统安装，客户端需要下载系统所需的软件包，所以需要使用NFS或者httpd把镜像文件共享出来。
+mkdir -p /var/www/html/centos7/
+mount /dev/cdrom /var/www/html/centos7/
+#cp /dev/cdrom/*  /var/www/html/centos7/ （可选配置）
+通常，我们在安装操作系统的过程中，需要大量的和服务器交互操作，为了减少这个交互过程，kickstart就诞生了。使用这种kickstart，只需事先定义好一个Kickstart自动应答配置文件ks.cfg（通常存放在安装服务器上），并让安装程序知道该配置文件的位置，在安装过程中安装程序就可以自己从该文件中读取安装配置，这样就避免了在安装过程中多次的人机交互，从而实现无人值守的自动化安装。
+生成kickstart的配置文件的三种方法：
+1.每安装好一台centos机器，centos安装程序都会创建出来一个kickstart配置文件，记录你的真实安装配置，如果你希望实现和某系统类似的安装，可以基于kickstart配置文件来生成你自己的kickstart配置文件。
+2.centos系统提供了一个叫kickstart的图形化的配置工具，可以很容易的创建自己的kickstart配置文件。
+3．自己使用kickstart配置文件手册，用任何一个文本编辑器都可以创建你自己的kickstart配置文件。
+配置kickstart，可以使用system-kickstart系统软件包来配置，ks.cfg配置文件内容如下：
+cat>/var/www/html/ks.cfg<<EOF
+install
+text
+keyboard 'us'
+rootpw  www.jfedu.net
+timezone  Asia/Shanghai 
+url --url=http://10.0.0.6/centos7
+lang zh_CN 
+firewall  --disabled 
+network  --bootproto=dhcp --device=ens33
+auth      --useshadow  --passalgo=sha512
+firstboot   --disable
+selinux   --disabled 
+bootloader --location=mbr
+clearpart --all --initlabel
+part /boot --fstype="ext4" --size=300
+part / --fstype="ext4"   --grow
+part swap --fstype="swap" --size=512
+reboot
+%packages
+@base
+@core
+%end
+EOF
+ks.cfg文件组成大致分为3段
+命令段 键盘类型，语言，安装方式等系统的配置，有必选项和可选项，如果缺少某项必选项，安装时会中断并提示用户选择此项的选项
+软件包段
+%packages
+@groupname：指定安装的包组
+package_name：指定安装的包
+-package_name：指定不安装的包
+在安装过程中默认安装的软件包，安装软件时会自动分析依赖关系。
+
+脚本段(可选)
+%pre:安装系统前执行的命令或脚本(由于只依赖于启动镜像，支持的命令很少)
+%post:安装系统后执行的命令或脚本(基本支持所有命令)
+关键字	含义
+install	告知安装程序，这是一次全新安装，而不是升级upgrade。
+url --url=" "	通过FTP或HTTP从远程服务器上的安装树中安装。
+url --url="http://10.0.0.7/CentOS-6.7/"
+url --url ftp://<username>:<password>@<server>/<dir>
+nfs	从指定的NFS服务器安装。
+nfs --server=nfsserver.example.com --dir=/tmp/install-tree
+text	使用文本模式安装。
+lang	设置在安装过程中使用的语言以及系统的缺省语言。lang en_US.UTF-8
+keyboard	设置系统键盘类型。keyboard us
+zerombr	清除mbr引导信息。
+bootloader	系统引导相关配置。
+bootloader --location=mbr --driveorder=sda --append="crashkernel=auto rhgb quiet"
+--location=,指定引导记录被写入的位置.有效的值如下:mbr(缺省),partition(在包含内核的分区的第一个扇区安装引导装载程序)或none(不安装引导装载程序)。
+--driveorder,指定在BIOS引导顺序中居首的驱动器。
+--append=,指定内核参数.要指定多个参数,使用空格分隔它们。
+network	为通过网络的kickstart安装以及所安装的系统配置联网信息。
+network --bootproto=dhcp --device=eth0 --onboot=yes --noipv6 --hostname=CentOS6
+--bootproto=[dhcp/bootp/static]中的一种，缺省值是dhcp。bootp和dhcp被认为是相同的。
+static方法要求在kickstart文件里输入所有的网络信息。
+network --bootproto=static --ip=10.0.0.100 --netmask=255.255.255.0 --gateway=10.0.0.2 --nameserver=10.0.0.2
+请注意所有配置信息都必须在一行上指定,不能使用反斜线来换行。
+--ip=,要安装的机器的IP地址.
+--gateway=,IP地址格式的默认网关.
+--netmask=,安装的系统的子网掩码.
+--hostname=,安装的系统的主机名.
+--onboot=,是否在引导时启用该设备.
+--noipv6=,禁用此设备的IPv6.
+--nameserver=,配置dns解析.
+timezone	设置系统时区。timezone --utc Asia/Shanghai
+authconfig	系统认证信息。authconfig --enableshadow --passalgo=sha512
+设置密码加密方式为sha512 启用shadow文件。
+rootpw	root密码
+clearpart	清空分区。clearpart --all --initlabel
+--all 从系统中清除所有分区，--initlable 初始化磁盘标签
+part	磁盘分区。
+part /boot --fstype=ext4 --asprimary --size=200
+part swap --size=1024
+part / --fstype=ext4 –grow  --asprimary --size=200
+--fstype=,为分区设置文件系统类型.有效的类型为ext2,ext3,swap和vfat。
+--asprimary,强迫把分区分配为主分区,否则提示分区失败。
+--size=,以MB为单位的分区最小值.在此处指定一个整数值,如500.不要在数字后面加MB。
+--grow,告诉分区使用所有可用空间(若有),或使用设置的最大值。
+firstboot	负责协助配置redhat一些重要的信息。
+firstboot --disable
+selinux	关闭selinux。selinux --disabled
+firewall	关闭防火墙。firewall --disabled
+logging	设置日志级别。logging --level=info
+reboot	设定安装完成后重启,此选项必须存在，不然kickstart显示一条消息，并等待用户按任意键后才重新引导，也可以选择halt关机。
+设置加密密码
+# 先生成一个密码备用
+[root@linux-node1 ~]# grub-crypt
+Password:123456
+Retype password:123456
+$6$X20eRtuZhkHznTb4$dK0BJByOSAWSDD8jccLVFz0CscijS9ldMWwpoCw/ZEjYw2BTQYGWlgKsn945fFTjRC658UXjuocwJbAjVI5D6/
+rootpw  --iscrypted $6$X20eRtuZhkHznTb4$dK0BJByOSAWSDD8jccLVFz0CscijS9ldMWwpoCw/ZEjYw2BTQYGWlgKsn945fFTjRC658UXjuocwJbAjVI5D6/
+
+配置DHCP服务，DHCP服务配置文件代码如下：
+cat>/etc/dhcp/dhcpd.conf<<EOF
+ddns-update-style interim;
+ignore client-updates;
+next-server 192.168.10.4;
+filename "pxelinux.0";
+allow booting;
+allow bootp;
+subnet 192.168.10.0 netmask 255.255.255.0 {
+
+option routers          192.168.10.1;
+option subnet-mask      255.255.255.0;
+range dynamic-bootp 192.168.10.180 192.168.10.200;
+}
+EOF
+# ddns-update-style interim 动态的dns 的更新方式
+# ignore client-updates"     这个选项是不允许客户机更新 DNS 记录
+#allow booting;#定义能够PXE启动
+#allow bootp;#定义支持bootp
+# subnet 192.168.10.0 netmask 255.255.255.0 服务端IP网段及掩码
+# range 192.168.10.10 192.168.56.20; dhcp 分发的地址范围，最好将本机IP包含在内。
+# default-lease-time 600;max-lease-time 7200;  IP地址租约时间。
+# filename "pxelinux.0"; 指定引导文件位置，这里是TFTP根目录下的pxelinux.0。
+#  next-server 192.168.56.14; TFTP服务器地址。
+
+
+重启各个服务，启动新的客户端验证测试：
+service httpd restart
+service dhcpd restart
+service xinetd restart
+ 
+开启新的虚拟机，BIOS以网卡启动；
+ 
+ 
+ 
+如果安装时报错如下：
+ 
+需要调整客户端虚拟机的内存设置为2G+；
+ 
+1.	Kickstart企业生产环境扩展
+在真实环境中，通常我们会发现一台服务器好几块硬盘，做完raid，整个硬盘有等10T，如果来使用kickstart自动安装并分区呢；一般服务器硬盘超过2T，如何来使用kickstart安装配置呢？这里就不能使用MBR方式来分区，需要采用GPT格式来引导并分区。
+需要在ks.cfg末尾添加如下命令来实现需求：
+%pre
+parted  -s  /dev/sdb  mklabel  gpt
+%end
+为了实现kickstart安装完系统后，自动初始化系统等等工作，我们可以在系统安装完后，自动执行定制的脚本，需要在ks.cfg末尾加入如下配置：
+%post
+mount  -t  nfs 192.168.10.4:/centos/init   /mnt
+cd  /mnt/ ;/bin/sh  auto_init.sh
+%end
+KICKSTART所有配置就此告一段落，真实环境需要注意，新服务器跟kickstart最后独立在一个网络，不要跟办公环境或者服务器机房网络混在一起，如果别的机器以网卡就会把它的系统重装成Linux系统。
