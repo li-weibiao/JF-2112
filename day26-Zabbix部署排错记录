@@ -1,0 +1,107 @@
+1.1 	Zabbix部署排错记录
+1.错误提示：
+configure: error: xml2-config not found. Please check your libxml2 installation.
+解决错误：yum install libxml2 libxml2-devel –y 
+2.错误提示
+configure: error: Invalid Net-SNMP directory - unable to find net-snmp-config
+解决错误：
+yum install net-snmp net-snmp-devel -y 
+3.错误提示
+checking for curl-config... no
+configure: error: Curl library not found
+  解决错误：缺少curl 插件，yum install curl curl-devel –y
+     4.错误提示
+     
+缺少 gd-png 、gd-jpeg、gd-freetype、sockets、bcmath、mbstring登录模块
+解决错误：重新编译和安装php
+./configure --prefix=/usr/local/php5/ --with-config-file-path=/usr/local/php5/etc --with-apxs2=/usr/local/apache/bin/apxs  --with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  --with-apxs2=/usr/local/apache/bin/apxs  --enable-cli --with-gd --enable-bcmath --enable-mbstring --enable-sockets --with-freetype-dir=/usr/local/freetype/ --with-png-dir=/usr/local/libpng/ --with-jpeg-dir=/usr/local/jpeg8/ --with-zlib-dir=/usr/local/zlib/ --with-zlib --with-gettext
+mysqlnd 是PHP链接mysql驱动的代码，支持php和mysql的链接
+--with-apxs2=/usr/local/apache/bin/apxs  支持和apache链接模块，触发apache的命令进行链接，-apxs2是apache2.0的版本，-apxs是apache1.0的版本
+--with-gd              打开gd库的支持
+--with-freetype-dir    打开对freetype字体库的支持
+--enable-bcmath        打开图片大小调整,用到zabbix监控的时候用到了这个模块
+--enable-mbstring      多字节，字符串的支持
+--enable-sockets       打开 sockets 支持
+--with-jpeg-dir        打开对jpeg图片的支持
+--with-png-dir         打开对png图片的支持
+--with-zlib-dir        打开zlib库的支持
+下载和安装以下软件包
+freetype-2.6.2.tar.bz2
+tar xjf freetype-2.6.2.tar.bz2
+./configure  --prefix=/usr/local/freetype && make -j6 && make -j6 install
+libpng-1.6.35.tar.gz
+tar -xzf libpng-1.6.35.tar.gz
+./configure --prefix=/usr/local/libpng && make -j6 && make -j6 install
+jpegsrc.v9c.tar.gz
+tar -xzf jpegsrc.v9c.tar.gz
+./configure  --prefix=/usr/local/jpeg && make -j6 && make -j6 install
+zlib-1.2.11.tar.gz
+tar -xzf zlib-1.2.11.tar.gz
+./configure --prefix=/usr/local/zlib && make -j6 && make -j6 install
+最终编译命令
+./configure --prefix=/usr/local/php5/ --with-config-file-path=/usr/local/php5/etc --with-apxs2=/usr/local/apache/bin/apxs  --with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  --with-apxs2=/usr/local/apache/bin/apxs  --enable-cli --with-gd --enable-bcmath --enable-mbstring --enable-sockets --with-freetype-dir=/usr/local/freetype/ --with-png-dir=/usr/local/libpng/ --with-jpeg-dir=/usr/local/jpeg/ --with-zlib-dir=/usr/local/zlib/ --with-zlib --with-gettext && make -j6 && make -j6 install
+
+yum安装的报错解决办法
+yum install php-bcmath php-gd php-xml  php-mbstring gd gd-devel -y
+5．错误提示：
+ 
+解决错误：PHP的配置文件不符合zabbix的要求
+查找php.ini 的文件位置，可以通过测试页来查看php的配置文件目录的位置，复制php.ini文件到PHP主配置目录
+cp php.ini-production  /usr/local/php5/etc/php.ini
+strace /usr/local/php5/bin/php -i 2>1.log也可以用这个命令查看php.ini位置，vim打开1.log可以用？php.ini 搜索
+配置php.ini问题
+sed   -i '/post_max_size/s/8/16/g;/max_execution_time/s/30/300/g;/max_input_time/s/60/300/g;s/\;date.timezone.*/date.timezone \= PRC/g;s/\;always_populate_raw_post_data/always_populate_raw_post_data/g'  php.ini
+max_execution_time = 300 #最大执行时间，页面等待时间
+memory_limit = 128M #单个脚本可调用内存大小
+post_max_size = 16M #上传文件大小上限
+upload_max_filesize = 2M #默认上传文件大小就是2M
+max_input_time = 300 最大上传文件时间
+date.timezone = PRC 设置时间是中国时区
+
+6.错误提示：
+ 
+解决错误：下载配置文件存放到Linux系统中，网站数据目录下的vim /usr/local/apache/htdocs/conf/zabbix.conf.php，重新启动apache
+
+7.错误提示:
+ 
+检查发现是MySQL数据库sock文件位置指定错误
+tail –fn 10 /tmp/zabbix_server.log
+ 
+解决错误：
+通过链接mysql.sock文件可以解决错误，准确配置sock文件的错误。
+ 
+
+8.错误提示
+ 
+解决错误：zabbix用户不存在，不能使用root用户开启
+创建一个zabbix用户useradd -s /sbin/nologin zabbix
+
+
+第2章 	使用yum部署Zabbix平台
+1）	首先要安装lamp的基础环境
+#lamp环境命令如下
+yum install httpd  httpd-devel  mariadb mariadb-devel mariadb-server php php-devel php-mysql -y
+
+
+
+监控agent报错常见报错
+zabbix客户端日志报错no active checks on server [192.168.3.108:10051]: host [192.168.3.108] not found
+#没有找到对应的主机
+Get value from agent failed: cannot connect to [[10.0.0.10]:10050]: [4] Interrupted system call
+#没有接收到来之10.0.0.10的请求
+Get value from agent failed: cannot connect to [[192.168.111.131]:10050]: [111] Connection refused
+#没有连接到192.168.111.131错误
+Get value from agent failed: cannot connect to [[192.168.1.205]:10050]: [113]No route to host
+#没有到达192.168.1.205路由或者主机信息
+解决办法
+1）	首先检查分析问题，检查网络是否联通，保证agent和服务端网络正常
+2）	检查10050端口是否正常开启或者防火墙是否关闭，selinux等
+3）	检查agent端的配置文件是否正确，地址是否配置正常。
+使用grep –vE “^$|^#” /usr/local/zabbix/etc/zabbix_agentd.conf ,过滤配置文件参数
+4）	检查服务端的防火墙和selinux或者端口（10051）是否正常
+5）	检查web界面输入指定IP是否正确和hostname主机名是否一致。
+
+自动发现有两个步骤：
+	发现  就是discovery
+	添加监控 就是action
+
