@@ -1,0 +1,63 @@
+JF2112班DAY-02课程笔记
+Centos 服务管理器：systemd和init并行运行。（systemctl和service）
+MBR（主引导记录）只占用了其中的446个字节，另外的64个字节为硬盘分区表 (Disk Partition Table，DPT)
+1.1 	操作系统启动流程：
+1.1.1  Centos6启动流程
+（1）	加载BIOS
+（2）	读取MBR(主引导记录)
+（3）	GRUB引导
+（4）	加载Kernel
+（5）	设定运行级别（init0-init6）
+（6）	加载rc.sysinit（linux系统初始化）
+（7）	加载内核模块
+（8）	启动运行级别程序
+（9）	读取rc.local文件
+（10）	执行/bin/login程序
+1.1.2  Centos7启动流程
+CentOS7和CentOS6启动流程差不多，只不过到init程序时候，改为了systemd，因此详细解释一下systemd后的启动流程
+1.1.3  uefi或BIOS初始化，开始post开机自检
+1.1.4  加载mbr到内存
+1.1.5  GRUB阶段
+1.1.6  加载内核和inintamfs模块
+1.1.7  内核开始初始化，使用systemd来代替centos6以前的init程序
+(1)执行initrd.target
+包括挂载/etc/fstab文件中的系统,此时挂载后，就可以切换到根目录了
+(2)从initramfs根文件系统切换到磁盘根目录
+(3)systemd执行默认target配置
+centos7表面是有“运行级别”这个概念，实际上是为了兼容以前的系统，每个所谓的“运行级别”都有对应的软连接指向，默认的启动级别时/etc/systemd/system/default.target,根据它的指向可以找到系统要进入哪个模式 
+模式：
+•	0 ==> runlevel0.target, poweroff.target
+•	1 ==> runlevel1.target, rescue.target
+•	2 ==> runlevel2.target, multi-user.target
+•	3 ==> runlevel3.target, multi-user.target
+•	4 ==> runlevel4.target, multi-user.target
+•	5 ==> runlevel5.target, graphical.target
+•	6 ==> runlevel6.target, reboot.target
+(4)systemd执行sysinit.target
+有没有很眼熟？是的，在CentOS6上是被叫做rc.sysint程序，初始化系统及basic.target准备操作系统
+(5)systemd启动multi-user.target下的本机与服务器服务
+(6)systemd执行multi-user.target下的/etc/rc.d/rc.local
+1.1.8  Systemd执行multi-user.target下的getty.target及登录服务
+getty.target我们也眼熟，它是启动终端的systemd对象。如果到此步骤，系统没有被指定启动图形桌面，到此就可以结束了，如果要启动图形界面，需要在此基础上启动桌面程序
+1.1.9  systemd执行graphical需要的服务
+CentOS6，7启动区别
+系统启动和服务器守护进程管理器，它不同于centos5的Sysv init，centos6的Upstart（Ubuntu制作出来），systemd是由Redhat的一个员工首先提出来的，它在内核启动后，服务什么的全都被systemd接管，kernel只是用来管理硬件资源，相当于内核被架空了，因此linus很不满意Redhat这种做法。
+
+
+1.2 	Linux用户及权限
+Root又叫超级管理员，Uid为0的用户才能叫超级管理员。
+LinuxCentos6用户分总共分为三种，分别如下：
+	root用户  （ID 0）
+	系统用户  （ID 1-499）
+	普通用户  （ID 500以上）
+LinuxCentos7用户分总共分为三种，分别如下：
+	root用户  （ID 0）
+	系统用户  （ID 1-999）
+	普通用户  （ID 1000以上）
+Linux用户规定信息
+	每个用户拥有一个UserID，操作系统实际读取的是UID，而非用户名；
+	每个用户属于一个主组，属于一个或多个附属组，一个用户最多有31个附属组；
+	每个组拥有一个GroupID；
+	每个进程以一个用户身份运行，该用户可对进程拥有资源控制权限；
+	每个可登陆用户拥有一个指定的Shell环境。
+
