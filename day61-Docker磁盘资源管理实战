@@ -1,0 +1,38 @@
+1、	Docker磁盘资源管理实战
+1）	Docker从1.13版本开始默认磁盘驱动模式：overlay2，可以修改为Devicemapper模式，修改方法：
+cat /etc/sysconfig/docker-storage-setup 
+STORAGE_DRIVER=devicemapper
+ 
+cat /etc/sysconfig/docker-storage
+DOCKER_STORAGE_OPTIONS="--storage-driver devicemapper --storage-opt dm.basesize=20G"
+ 
+ 
+2、	Docker虚拟化容器管理脚本实战
+	检测Linux系统是否配置Docker；
+	脚本要提供自动部署Docker引擎服务并且启动；
+	可以自动下载CentOS操作系统镜像（仓库源）；
+	创建桥接网络，并且设置桥接网卡br0|br1；
+	判断局域网可用的IP地址，给容器设置静态IP；
+	启动Docker容器设定容器的CPU、内存、默认硬盘空间；
+	启动Docker容器设定容器的Name名称，以IP编号命名；
+	根据指定条件可以新建容器、停止容器、启动容器、删除容器；
+	收集Docker容器基础信息（容器ID、宿主机IP、容器IP、容器名称、容器资源配置、用户名和密码、容器部署内容）；
+	将容器的所有信息持久化存储到数据库表、Excel表格中；
+	能够实现CPU、内存、硬盘容量在线扩容功能（高级功能）；
+ 
+3、	Ansible自动化运维软件概念和原理
+1）	生成秘钥对，并且拷贝公钥到远程被管理机器，命令如下：
+ssh-keygen
+ssh-copy-id -i /root/.ssh/id_rsa.pub 192.168.0.5
+2）	基于Command模块远程执行df -h命令操作：
+ansible www -m command -a "df -h"
+ 
+3）	基于SHELL模块远程执行ps -ef命令操作：
+ansible www -m shell -a "ps -ef|grep httpd"
+ 
+4）	拷贝文件至远程服务器；
+ansible www -m copy -a "src=/root/httpd-2.4.32.tar.gz dest=/tmp/"
+ 
+5）	拷贝文件至远程机器，并且备份远程文件；
+ansible www -m copy -a "src=/root/httpd-2.4.32.tar.gz dest=/tmp/ mode=755 backup=yes"
+ 
