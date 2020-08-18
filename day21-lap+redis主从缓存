@@ -1,0 +1,270 @@
+1.1 	LAP+MySQL主从+MySQL_proxy架构原理
+1）	LAP+MySQL主从web架构，存在一个单点问题，LAP读和写均是在master数据库上，访问量过大容易宕机，为了减轻其压力，需要用读写分离把读取和写入的请求分开。
+2）	MySQL-proxy为读写分离中间件，web网站链接mysql-proxy，由proxy将读写请求进行转发和拦截，proxy将拦截到的web的读请求（show、select），转发到slave数据库，如果说拦截到写请求（update、delete、insert、alter、drop），转发到master数据库上。
+3）	Master和slave架构是MySQL主从架构，写入master库sql语句，异步复制到slave库，从而保证写入master数据库中的数据，可以从slave库进行读取。可以由mysql-proxy进行读取。
+4）	SQL语句并不是直接进入到master或者slave，而是经过mysql-proxy判断和分析之后，将读写操作进行分开，将读操作发给slave，将写操作发给master，由后端数据库处理完成之后进行返回。
+1.2 	LAMP+Redis主从架构原理
+LAMP+Redis工作机制：用户通过浏览器访问LAMP网站，并以用户名和密码登录到网站，默认Redis缓存中没有该用户名和密码对应列表，PHP程序会读取MYSQL数据库中的用户名和密码，然后将用户名和密码缓存至Redis中，下次用户通过浏览器再次使用同样的用户名和密码登录网站，PHP无需从数据库中读取该用户和密码信息，而是直接优先从Redis缓存中读取并返回，从而减轻MYSQL数据库的压力。
+	 Redis的所有的数据都是保存在内存中，然后不定期的通过异步方式保存成快照，再将快照保存到磁盘上（半持久化模式），也可以每一次将数据的变化，写入到一个日志中再保存到磁盘，（全持久化模式）。
+ 
+要实现将LAMP PHP网站相关数据存入Redis，需要一台Redis服务器、PHP-redis连接驱动、PHP代码连接修改等。
+1.3 	LAMP+Redis操作案例
+LAMP PHP连接Redis，首先需安装Redis服务器，安装连接驱动，然后修改PHP网站配置文件，具体操作步骤如下：
+（1）	LAMP+Redis实战环境配置
+LAMP服务器 Centos7.4-1： 10.0.0.4
+Redis主库Centos7.4-2：   10.0.0.5
+Redis从库Centos7.4-3：   10.0.0.6
+	Centos7.4-1配置 lamp架构配置
+（2）	Apache WEB安装，先安装apr、apr-utils等基础库包。
+yum install apr-devel apr-util-devel  gcc c ncurses-devel cmake libaio bison gcc-c++  git pcre* -y
+PCRE是一个Perl库，包括 perl 兼容的正则表达式库。PCRE是一个轻量级的函数库，比Boost之类的正则表达式库小得多。
+CMake是一种跨平台编译工具，比make更为高级，使用起来要方便得多。CMake主要是编写CMakeLists.txt文件，然后用cmake命令将CMakeLists.txt文件转化为make所需要的makefile文件，最后用make命令编译源码生成可执行程序或共享库（so(shared object)）。
+ncurses是字符终端下屏幕控制的基本库，mysql登录时使用到了相应的功能。
+libaio是Linux下的一个异步非阻塞接口，它提供了以异步非阻塞方式来读写文件的方式，读写效率比较高。libaio的读写过程简单说来就是你发出一个读写请求，然后你可以开始做其他事情，当读写过程结束时libaio会通知你你的这次请求已经完成（而select模型是告诉你读写已经就绪）
+Bison是一种通用的解析器生成器，它将一个LALR（1）上下文无关文法的语法描述转换成一个C程序来解析该语法。一旦您精通Bison，您就可以使用它来开发广泛的语言解析器，从简单的桌面计算器到复杂的编程语言。
+Git ：快速、可缩放的分布式版本控制系统
+
+cd  /usr/src 
+wget  https://sourceforge.net/projects/pcre/files/pcre/8.42/pcre-8.42.tar.gz
+#tar xzf  pcre-8.42.tar.gz
+#cd pcre-8.42
+#./configure --prefix=/usr/local/pcre
+#make
+#make install  
+wget http://archive.apache.org/dist/httpd/httpd-2.4.29.tar.gz 
+tar  xzf  httpd-2.4.29.tar.gz
+cd httpd-2.4.29 
+./configure --prefix=/usr/local/apache --enable-so --enable-rewrite  --with-pcre=/usr/local/pcre
+make  && make install
+setenforce 0
+systemctl stop firewalld
+iptables -F 
+echo "ServerName localhsot:80" >> /usr/local/apache/conf/httpd.conf
+/usr/local/apache/bin/apachectl restart
+（3）	源码安装MYSQL5.5.20方法，通过cmake、make、make install三个步骤实现。 
+wget http://down1.chinaunix.net/distfiles/mysql-5.5.20.tar.gz 
+tar –zxf mysql-5.5.20
+yum install -y gcc c ncurses-devel cmake libaio bison gcc-c++  git  cmake  ncurses-devel ncurses -y
+cmake  .  -DCMAKE_INSTALL_PREFIX=/usr/local/mysql55/ \
+-DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+-DMYSQL_DATADIR=/data/mysql \
+-DSYSCONFDIR=/etc \
+-DMYSQL_USER=mysql \
+-DMYSQL_TCP_PORT=3306 \
+-DWITH_XTRADB_STORAGE_ENGINE=1 \
+-DWITH_INNOBASE_STORAGE_ENGINE=1 \
+-DWITH_PARTITION_STORAGE_ENGINE=1 \
+-DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+-DWITH_MYISAM_STORAGE_ENGINE=1 \
+-DWITH_READLINE=1 \
+-DENABLED_LOCAL_INFILE=1 \
+-DWITH_EXTRA_CHARSETS=1 \
+-DDEFAULT_CHARSET=utf8 \
+-DDEFAULT_COLLATION=utf8_general_ci \
+-DEXTRA_CHARSETS=all \
+-DWITH_BIG_TABLES=1 \
+-DWITH_DEBUG=0
+make &&make install
+cd /usr/local/mysql55/ 
+\cp support-files/my-large.cnf /etc/my.cnf
+\cp support-files/mysql.server /etc/init.d/mysqld 
+chkconfig --add mysqld 
+chkconfig --level 35 mysqld on
+mkdir -p  /data/mysql
+useradd  mysql
+/usr/local/mysql55/scripts/mysql_install_db --user=mysql --datadir=/data/mysql/ --basedir=/usr/local/mysql55/
+ln  -s  /usr/local/mysql55/bin/* /usr/bin/
+service  mysqld  restart
+ 
+查看MYSQL启动进程
+
+（4）	PHP服务安装，PHP需与Apache、MySQL进行整合，如图12-3所示，参数命令如下：
+cd /usr/src 
+wget http://mirrors.sohu.com/php/php-5.3.28.tar.bz2 
+tar jxf  php-5.3.28.tar.bz2 
+cd php-5.3.28 ；
+vim  /usr/src/php-5.3.28/Zend/zend_language_parser.h       修改317行，改为(void *compiler_globals)
+./configure过程很顺利，在make环节发生错误。报错：/root/php-5.3.28/Zend/zend_language_parser.h:317: 错误：与‘zendparse’类型冲突。
+下一句给了提示，在zend_globals_macros.h：35中‘zendparse’类型如此：
+CG 的含义就是 compiler_globals ，Zend编译器相关的全局变量； 
+EG 的含义就是 executor_globals，Zend执行器相关的全局变量；
+yum install libxml2 libxml2-devel -y 
+libxml2 是个跨平台的C库,用于操作xml文件,解析xml文件
+xml语言：可扩展标记语言，标准通用标记语言的子集，是一种用于标记电子文件使其具有结构性的标记语言。
+./configure --prefix=/usr/local/php5  --with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  --with-apxs2=/usr/local/apache/bin/apxs
+make -j4 && make  -j4  install
+ 
+图12-3 LAMP源码编译整合
+（5）	Apache+PHP源码整合
+为了能让Apache发布PHP页面，需要将PHP安装完成后的libphp5.so模块与Apache进行整合，vim httpd.conf编辑配置文件，加入如下代码：
+LoadModule         php5_module modules/libphp5.so
+AddType         application/x-httpd-php  .php
+这个是让.txt后缀的文件可执行PHP，如果.php文件中包括PHP代码，则该文件和.php后缀的文件完全 一样，都成为动态文件，在服务器端处理。
+如果在httpd.conf中不设置此语句，则以字符的形式直接读取.php文件中的内容，不作PHP处理。
+DirectoryIndex     index.php index.html index.htm
+（6）	测试Apache+PHP环境
+创建PHP测试页面，在/usr/local/apache/htdocs目录下创建index.php测试页面，执行如下命令自动创建：
+Vim  /usr/local/apache/htdocs/index.php
+<?php
+phpinfo()；
+?>
+/usr/local/apache/bin/apachectl  restart 
+重新启动Apache服务，浏览器输入 Apache WEB的IP访问，如图12-4所示，即代表LAMP源码环境整合成功。
+ Apache+PHP测试页面
+
+（7）	Discuz PHP论坛安装
+LAMP源码整合完毕之后，Dicuz官网下载Discuz开源PHP软件包，将软件包解压并发布在Apache Htdocs发布目录，代码如下：
+cd     /usr/src ；
+wget  http://download.comsenz.com/DiscuzX/3.1/Discuz_X3.1_SC_UTF8.zip 
+unzip  Discuz_X3.1_SC_UTF8.zip -d  /usr/local/apache/htdocs/ 
+cd    /usr/local/apache/htdocs/ 
+mv upload/* .
+chmod 757  -R  data/  uc_server/  config/  uc_client/
+
+MYSQL数据库命令行中创建PHP连接MYSQL的用户及密码，命令如下：
+create database discuz charset=utf8;
+grant all on discuz.* to root@'localhost' identified by "123456";
+
+数据库服务器地址填写本机的地址
+数据库名字填写在主数据库创建的discuz
+用户名填写数据库用户名root
+数据库密码123456
+ 
+配置成功后可以看到如下
+
+ 
+	Centos7.4-2配置 redis主库
+Redis主从配置非常简单，只需要在Redis丛库10.0.0.6配置中设置如下指令，slaveof表示指定主库的IP，10.0.0.5为master服务器，6379为master服务器Redis端口，配置方法如下：
+
+10.0.0.5服务器安装部署Redis服务，代码如下
+wget  	http://download.redis.io/releases/redis-4.0.9.tar.gz 
+tar 	    zxf 			redis-4.0.9.tar.gz
+cd 		redis-4.0.9
+yum install gcc-c++ -y
+make  	PREFIX=/usr/local/redis   MALLOC=libc   install
+cp     	redis.conf     /usr/local/redis/
+将/usr/local/redis/bin/目录加入至环境变量配置文件/etc/profile末尾，然后Shell终端执行source /etc/profile让环境变量生效。
+echo "export PATH=/usr/local/redis/bin:$PATH" >> /etc/profile 
+source /etc/profile
+Nohup后台启动及停止Redis服务命令：
+nohup  /usr/local/redis/bin/redis-server  /usr/local/redis/redis.conf  &
+nohup不挂断地运行命令。 一般是和&号同时使用
+/usr/local/redis/bin/redis-cli  -p  6379 shutdown
+（8）	在LAMP服务器Centos7.4-1上安装PHP-Redis连接驱动
+要确保PHP能够连接Redis缓存服务器，需添加PHP Redis扩展程序，也即是添加PHP安ext扩展模块，添加方法如下:
+wget  https://github.com/phpredis/phpredis/archive/3.1.2.tar.gz 
+tar   xzf  3.1.2.tar.gz
+#复制配置文件到/usr/local/php5/lib/下:此目录是在phpinfo页面里的Configuration File参数的目录下
+\ /usr/src/php-5.3.28/php.ini-production     /usr/local/php5/lib/php.ini
+#phpize 是属于 php-devel 中的东西，主要是设定 php 外挂模块的一些设定
+例如你的php不支持mysql, mbstring、redis等
+yum install autoconf  -y 
+Autoconf产生的配置脚本通常叫做configure。configure运行的时候会产生几个文件，这几个文件包含了有合适的值的配置参数。自动生成configure脚本的
+cd   phpredis-3.1.2/
+/usr/local/php5/bin/phpize
+#phpize 是属于 php-devel 中的东西，主要是设定 php 外挂模块的一些设定
+例如你的php不支持mysql, mbstring、redis等
+./configure  --with-php-config=/usr/local/php5/bin/php-config  --enable-redis
+make   &&  make install
+复制配置文件到/usr/local/php5/lib/下:此目录是在phpinfo页面里的Configuration File参数的目录下
+修改vim /usr/local/php5/lib/php.ini配置文件，添加redis.so模块，代码如下：
+extension_dir = "/usr/local/php5/lib/php/extensions/no-debug-zts-20090626"
+extension=redis.so
+重启Apache服务，写入phpinfo测试页面，通过浏览器访问，如图12-9所示，检查到存在Redis模块即可：
+ 图12-9 PHP Redis模块添加
+（9）	LAMP+Redis缓存测试
+登录10.0.0.4WEB
+discuz PHP网站发布/usr/local/apache/htdcos/config目录全局配置文件config_global.php，查找CONFIG MEMORY段，将redis  server后改为Redis主服务器的IP 10.0.0.5即可，如图12-10所示：
+ 图12-10 PHP Redis配置文件修改
+
+通过浏览器访问Apache PHP论坛网站，同时登陆Redis服务器，执行命令redis-cli进入Redis命令行，运行命令KEYS *，如图12-11所示，存在以IOKLAN开头的key，则证明Redis成功缓存LAMP+Discuz网站信息数据。
+Redis进程文件进程是127.0.0.1:6379 需要修改配置文件将文件改成0.0.0.0，redis主文件在/usr/local/redis/redis.conf，修改bind参数是0.0.0.0
+ 图12-11 Redis缓存LAMP KEYS数据
+（1）	测试Redis缓存是否生效
+访问LAMP+Discuz网站，创建论坛测试用户jfedu666，密码jfedu666，此时用户数据第一次注册，用户名和密码会写入到MySQL数据库表中，同时会写入该数据也会写入到Redis缓存，如图12-12（a）、12-12（b）、12-12（c）所示：
+ 图12-12（a） 创建论坛用户和密码
+mysql> select uid,email,username,password from discuz.pre_common_member;
+ 图12-12（b） MySQL数据库用户查询
+ 图12-12（c） Redis缓存测试案例
+将jfedu666从MySQL Discuz库pre_common_member中删除，通过该用户依然可以正常登录WEB网站，则证明此时数据读取的是Redis缓存服务器，如图12-13（a）、12-13（b）、12-13（c）所示：
+delete from discuz.pre_common_member where username='12123';
+ 图12-13（a） 删除数据库用户和密码
+ 图12-13（b） 用户名和密码登录discuz论坛
+ 图12-13（c） 用户名和密码登录discuz论坛
+	Centos7.4-3配置  redis从库
+10.0.0.6服务器安装部署Redis从服务，代码如下
+wget  	http://download.redis.io/releases/redis-4.0.9.tar.gz 
+tar 	    zxf 			redis-4.0.9.tar.gz
+cd 		redis-4.0.9
+make  	PREFIX=/usr/local/redis   MALLOC=libc   install
+cp     	redis.conf     /usr/local/redis/
+将/usr/local/redis/bin/目录加入至环境变量配置文件/etc/profile末尾，然后Shell终端执行source /etc/profile让环境变量生效。
+export PATH=/usr/local/redis/bin:$PATH
+Nohup后台启动及停止Redis服务命令：
+nohup  /usr/local/redis/bin/redis-server  /usr/local/redis/redis.conf  &
+/usr/local/redis/bin/redis-cli  -p  6379 shutdown
+（1）	192168.149.130 Redis丛库redis.conf配置文件如下：
+grep -v -E  "^#|^$" /usr/local/redis/redis.conf
+daemonize no
+pidfile /var/run/redis.pid
+port  6379
+slaveof  10.0.0.5  6379
+tcp-backlog 511
+timeout 0
+tcp-keepalive 0
+loglevel notice
+logfile ""
+databases 16
+save 900 1
+save 300 10
+save 60 10000
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+dbfilename redis.rdb
+dir  /data/redis/
+slave-serve-stale-data yes
+slave-read-only yes
+repl-disable-tcp-nodelay no
+slave-priority 100
+appendonly no
+appendfilename "appendonly.aof"
+appendfsync everysec
+no-appendfsync-on-rewrite no
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+lua-time-limit 5000
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+latency-monitor-threshold 0
+notify-keyspace-events ""
+hash-max-ziplist-entries 512
+hash-max-ziplist-value 64
+list-max-ziplist-entries 512
+list-max-ziplist-value 64
+set-max-intset-entries 512
+zset-max-ziplist-entries 128
+zset-max-ziplist-value 64
+hll-sparse-max-bytes 3000
+activerehashing yes
+client-output-buffer-limit normal 0 0 0
+client-output-buffer-limit slave 256mb 64mb 60
+client-output-buffer-limit pubsub 32mb 8mb 60
+hz 10
+aof-rewrite-incremental-fsync yes
+（2）	重启Redis主库、丛库服务，在Redis主库创建key及values，登录Redis丛库查看，如图12-14（a）、12-14（b）所示:
+ 
+3）主库宕机之后可以使用从库继续配置
+需要将discuz配置文件修改成从库地址
+ 
+Redis从库需要将配置修改成监听所有并去掉从库标签
+ 
+
+
+
+
+
+
+
+
+
