@@ -1,0 +1,11 @@
+1、	SHELL编程四剑客之四AWK实战
+1）	AWK是Linux系统默认的文本处理工具，AWK分为NAWK和GAWK，现有使用最广泛的AWK为GAWK（开源的、GNU），处理文本内容原理，对文本内容进行逐行处理；
+2）	AWK可以根据指定的条件或者参数命令，去对文本内容或者输入的结果进行处理，根据用户指定的需求对数据进行处理，并且输出指定的结果；（AWK不是编辑器，更加偏向于结果的标准输出）
+3）	AWK工具的语法格式：awk -option ‘pattern + action’ file；
+4）	AWK语法中Option参数：-F（格式化）、-f（文件）、-v（变量）、-V（版本）等；
+5）	AWK语法中Action参数：>、>>、Print（打印输出），是AWK工具默认的动作；
+	基于AWK匹配passwd文本文件中是否包含daemon关键词&打印关键词所在的行；
+awk '/daemon/' passwd
+awk '/daemon/ {print}' passwd
+ 
+6）	
