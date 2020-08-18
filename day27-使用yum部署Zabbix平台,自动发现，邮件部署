@@ -1,0 +1,134 @@
+第1章 	使用yum部署Zabbix平台
+1）	首先要安装lamp的基础环境
+#lamp环境命令如下
+yum install httpd  httpd-devel  mariadb mariadb-devel mariadb-server php php-devel php-mysql -y
+监控agent报错常见报错
+zabbix客户端日志报错no active checks on server [192.168.3.108:10051]: host [192.168.3.108] not found
+#没有找到对应的主机
+Get value from agent failed: cannot connect to [[10.0.0.10]:10050]: [4] Interrupted system call
+#没有接收到来之10.0.0.10的请求
+Get value from agent failed: cannot connect to [[192.168.111.131]:10050]: [111] Connection refused
+#没有连接到192.168.111.131错误
+Get value from agent failed: cannot connect to [[192.168.1.205]:10050]: [113]No route to host
+#没有到达192.168.1.205路由或者主机信息
+解决办法
+1）	首先检查分析问题，检查网络是否联通，保证agent和服务端网络正常
+2）	检查10050端口是否正常开启或者防火墙是否关闭，selinux等
+3）	检查agent端的配置文件是否正确，地址是否配置正常。
+使用grep –vE “^$|^#” /usr/local/zabbix/etc/zabbix_agentd.conf ,过滤配置文件参数
+4）	检查服务端的防火墙和selinux或者端口（10051）是否正常
+5）	检查web界面输入指定IP是否正确和hostname主机名是否一致。
+自动发现：由服务端主动发起，Zabbix server端开启发现的进程，定期扫描局域网中服务器IP范围或者其他设备。
+检查客户端的途径：
+ 
+ 属性	描述
+Name	规则名称，唯一
+Discovery by proxy	   谁执行当前发现规则:
+no proxy – zabbix server
+<proxy name> – 指定的proxy
+ IP range	发现规则中的ip范围，格式如下
+单IP: 192.168.1.33
+一个IP段: 192.168.1.1-255
+一个子网: 192.168.4.0/24
+支持如下子网掩码:
+IPV4:/16 – /30
+IPV6:/112 – /128
+IP列表: 192.168.1.1-255,192.168.2.1-100,192.168.2.200,192.168.4.0/24
+备注：1. IP列表中的IP不能重复2. 不同的发现规则里面不要包含相同的IP，否则可能会出现意想不到的问题
+Delay (in sec)	规则执行完毕之后，要多久才执行下一次。
+Checks	支持的checks: SSH, LDAP, SMTP, FTP, HTTP, HTTPS, POP, NNTP, IMAP, TCP, Telnet, Zabbix agent, SNMPv1 agent, SNMPv2 agent, SNMPv3 agent, ICMP ping.
+Port属性如下：
+单个端口: 22
+端口段: 22-45
+端口列表: 22-45,55,60-70
+备注：选择哪种检测方式，请根据实际情况来定，什么合适用什么。
+Device uniqueness criteria	 设备唯一标识:
+IP address – 使用IP地址作为设备唯一性标识
+Type of discovery check – 使用SNMP 或者Zabbix agent的check作为唯一标识
+Enabled	是否启用当前规则
+
+端口的范围：22-45 55 60-70
+ 
+自动发现有两个步骤：
+	发现  就是discovery
+	添加监控 就是action
+zabbix所有action都是基于发现事件，例如：
+	发送通知
+	添加/移除主机
+	启用/禁用主机
+	添加主机到组
+	从组中移除主机
+	主机link模板/unlink模板
+	执行远程脚本命令
+ 创建主机
+discovery发现主机事件产生之后，接下来需要执行discovery action，在action中选择添加主机操作、并且将主机加入某个组以及link某个模板等等。
+那么主机名怎么定义呢？
+首先监控端（server/proxy）通过ip泛解析主机名（如果失败了，不会重新尝试），如果解析成功了，那么zabbix将会使用这个主机名，否则直接使用ip地址。
+如果主机名相同怎么办？
+比如都叫carlos-server，那么第一台主机名会定义为carlos-server，第二台为carlos-server_2，第三台为carlos-server_3，以此类推。action配置里的条件包含设备类型、IP、状态、uptime/downtime等等。
+
+自动发现测试命令
+[root@localhost bin]# pwd 
+/usr/local/zabbix/bin
+[root@localhost bin]# ./zabbix_get  -s 10.0.0.6 -k "system.uname"
+Linux localhost.localdomain 3.10.0-693.el7.x86_64 #1 SMP Tue Aug 22 21:09:27 UTC 2017 x86_64
+[root@localhost bin]# ./zabbix_get  -s 10.0.0.7 -k "system.uname"
+Linux localhost 3.10.0-693.el7.x86_64 #1 SMP Tue Aug 22 21:09:27 UTC 2017 x86_64
+[root@localhost bin]# ./zabbix_get  -s 10.0.0.5 -k "system.uname"
+Linux localhost.localdomain 3.10.0-693.el7.x86_64 #1 SMP Tue Aug 22 21:09:27 UTC 2017 x86_64
+自动发现动作截图
+ 
+自动发现基于以下信息：
+1.	IP范围
+2.	可以有外部服务（ftp、ssh、telnet、http、https、）
+3.	agent请求的键值（key）
+4.	来自snmp agent的信息
+
+
+课堂问题：自动发现后机器宕机，配置自动移除案例。
+
+自动注册：由客户端主动发起，客户端必须安装和配置agent，否则无法自动注册主机列表中。
+agent配置文件：
+[root@localhost ~]# cat /usr/local/zabbix/etc/zabbix_agentd.conf
+LogFile=/tmp/zabbix_agentd.log   #定义日志位置
+Server=10.0.0.5  #server地址
+ServerActive=10.0.0.5  #主动监控server的IP地址
+Hostname=10.0.0.6  #主机名称
+配置自动注册
+ 
+自动注册的agent主机必须安装agent客户端，必须和服务端在同一个局域网内。
+第2章 	邮件部署
+zabbix邮件媒介的配置
+ 
+密码是163的邮箱授权码是************
+ 
+ 
+
+配置用户报警媒介
+ 
+
+配置媒介动作及用户人和报警信息
+ 
+ 
+ 
+Zabbix action中的常用变量：
+{HOST.NAME}：主机名
+{HOST.IP}：主机IP
+{TRIGGER.NAME}：报警信息
+{TRIGGER.STATUS}：事件状态，是problem还是ok
+{TRIGGER.NAME}：具体事件，通常写在邮件标题中
+{TRIGGER.SEVERITY}：事件的严重级别
+[EVENT.DATE} {EVENT.TIME}：事件发生时间
+{EVENT.ID}：事件ID
+
+邮件报警
+报警提示说ping不通 10.0.0.7
+ 
+报警信息说10.0.0.5 /boot目录容量低于%20
+ 
+错误信息：Couldn't connect to server: Failed connect to smtp.16.com:25; Connection refused
+解决错误：查看163邮箱的smtp服务器是否配置正常。
+错误信息：Login denied: Authentication failed: 535
+解决错误：认证的账号和密码发生错误，请修改账号密码。
+错误信息： 
+解决办法：错误是使用163授权端口被限制，可以换邮箱或者添加多个收件人邮箱进行测试（126、163、新浪、qq、139）等
