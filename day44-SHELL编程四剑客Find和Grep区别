@@ -1,0 +1,12 @@
+1、	SHELL编程四剑客Find和Grep区别
+1）	Find工具主要是对于Linux系统文件和目录的查找，查找文件和目录所在的具体位置；（-name、-type、-size、-mtime、-perm、exec、xargs、maxdepth）
+2）	Grep工具主要是对于Linux系统中指定文本文件中的关键词的查找，可以过滤或者匹配文本文件中的字符；（-a、-c、-i、-n、-v、-E、-A、-B、-C、-w、-o、-r、-l）
+2、	SHELL编程四剑客之三Sed工具
+1）	SED工具被称为编辑器，跟vi、vim有什么区别呢？vi和vim主要是交互模式编辑器，而sed属于非交互模式，主要是用于快速处理文本文件；
+2）	Sed工具的用途跟vi和vim（编辑器）类似的，主要是用于对文本文件的内容处理：增加、删除、修改、更新、打印；
+3）	Sed工具的语法格式：sed -option（参数） command（命令） file（文本文件），-option（参数）和Command（命令）是sed核心；
+4）	Sed Option参数：-i、-n、-e、-f、-v等；Sed Command命令：s、n、d、p、i、a等，Sed工具常见的案例：
+	基于Sed修改Linux下ens33|eth0的网卡IP地址：
+
+
+
