@@ -1,0 +1,43 @@
+1、	Docker虚拟化网络模式
+	Host模式
+Docke引擎启动容器，本来默认方式会分配给容器网络子系统，如果指定--net=host，启动后的容器不会拥有独立的网络系统，跟宿主机公用一个网络子系统，公用宿主机的IP和端口；（宿主机使用了22端口，容器还能否使用22端口呢？）
+#指定容器的网络模式为host模式；
+docker run -itd --net=host --name=none_test docker.io/lemonbar/centos6-ssh 
+ 
+	None模式
+Docker引擎启动容器，会分配给容器网络子系统，但是并不会设置网卡、IP、路由等信息，需要用户自定义去配置和添加，借助pipework工具去实现；
+docker run -itd --net=none --name=none_test docker.io/lemonbar/centos6-ssh
+	Container模式
+Docker引擎启动容器，不会分配给容器网络子系统，共享已经存在的容器的IP和网络空间，跟host模式类似的，host模式是共享宿主机，而Container模式共享容器；
+docker run -itd --net=container:692de87ac76c --name=container_test docker.io/lemonbar/centos6-ssh sleep 999d 
+	Bridge模式（桥接模式）
+默认Docker引擎启动容器，是使用桥接模式，Bridge默认模式，桥接模式：Docker0（绑定在宿主机网卡、虚拟二层交换机）；
+#添加一条到10.10.0.0网段的路由；（临时）
+route add -net 10.10.0.0/16 dev docker0
+#删除一条到10.10.0.0网段的路由；（临时）
+route del -net 10.10.0.0/16 dev docker0
+2、	Docker虚拟化生产环境实战一
+1）	生产环境采购了10台高配物理机，要求每台服务器虚拟10台+ CentOS虚拟机，要求独立的对物理机和虚拟机进行管理，有哪些环节重点考虑呢？
+	推荐使用Docker虚拟化（轻量级、高性能）；
+	基于Linux平台部署实战（高效、稳定）；
+	10台高配机器+虚拟机（台数：110+，以Guest OS方式启动）；
+	准备110+虚拟机的IP地址，不能冲突（后续扩展性）；
+	虚拟机网络，尽量使用跟物理机保持同网段（管理方便）；
+	启动虚拟机，设定Name跟IP地址保持相关性（一一对应）；
+	虚拟的服务器IP信息、宿主机、密码、用户名等信息要形成统一的管理文档（数据库）记录；
+3、	Docker容器生产环境配置案例
+1）	线上生产环境，启动Docker容器的话，一般是以Guest OS（CentOS操作系统）方式启动，方便管理和维护，不会直接启动APP（Nginx、Tomcat、Redis、MYSQL）容器；
+2）	基于Docker引擎启动Docker容器时，通常会设定每个容器（虚拟机）的资源配置（京东物理机配置：64C 256G 2T+ 40Gb），虚拟机的配置设定如下：
+	CPU，核心数设定：2C、4C、8C、16C、32C；
+	MEM，内存容量：4G、8G、16G、32G、64G；
+	DISK，硬盘容量：20GB、40GB、80GB、100GB、200GB；
+	NET，网卡带宽：300Mb、500Mb、1000Mb（40台容器）；
+3）	京东物理机配置：64C 256G 2T+ 40Gb，可以虚拟多少个虚拟机？看每个虚拟机的配置：
+	8C 16G 100GB 1000Mbx7台；
+	4C 32G 100GB 1000Mbx1台；
+	2C 16G 100GB  1000Mbx1台；
+
+
+
+
+
