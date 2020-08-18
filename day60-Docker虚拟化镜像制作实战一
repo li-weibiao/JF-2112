@@ -1,0 +1,53 @@
+1、	Docker虚拟化镜像制作实战一
+1）Docker commit可以实现容器提交为新的镜像，提交的镜像自动进入当前系统的镜像列表（容器|镜像内容是完整的）；
+docker commit 7ec01484db55  centos7:v1
+docker images
+2）Docker export可以实现容器提交为新的镜像，提交的镜像不能自动进入当前系统的镜像列表，可以提交为新的tar文件；（镜像内容会丢失部分数据：当前正在运行中、内存中、环境变量、执行命令）
+docker export 7ec01484db55 > centos7.tar
+导入镜像的命令；
+cat centos7.tar |docker import - centos7:v3
+3）Docker save工具可以直接导出镜像为.tar文件，命令如下：（镜像内容是比较完整的）
+docker save centos7:v1 -o centos7:v3.tar
+可以通过docker load导入save保存的镜像；
+docker load -i centos7_v3.tar
+ 
+ 
+2、	Docker虚拟化镜像制作实战二
+# 设置基本的镜像，后续命令都以这个镜像为基础
+FROM docker.io/centos6:latest
+# 作者信息
+MAINTAINER  JFEDU.NET
+# RUN命令会在上面指定的镜像里执行任何命令
+RUN rpm --rebuilddb;yum install rpm-build -y
+RUN rpm --rebuilddb;yum install httpd httpd-devel php php-devel php-mysql mysql-server mysql my
+sql-devel -y
+RUN echo -e "<?php\nphpinfo();\n?>">/var/www/html/index.php
+RUN echo 1|passwd --stdin root
+RUN cp /etc/skel/.bash* /root/
+RUN mkdir -p /tmp/20501111
+WORKDIR /root/
+RUN su -
+#暴露HTTP端口81
+EXPOSE 80 3306 22
+# 设定运行镜像时的默认命令：输出ip，并以daemon方式启动sshd
+CMD service httpd start;service mysqld start;service sshd start;/bin/bash
+3、	Docker虚拟化镜像制作实战三
+# 设置基本的镜像，后续命令都以这个镜像为基础
+FROM docker.io/lemonbar/centos6-ssh
+MAINTAINER  JFEDU.NET
+WORKDIR /root
+RUN cp /etc/skel/.bash* /root/
+RUN mkdir -p /usr/local/tomcat/ /usr/java/
+ADD tomcat/ /usr/local/tomcat/
+ADD edu.war /usr/local/tomcat/webapps/ROOT/
+ADD jdk1.8.0_131.tar.gz /usr/java/
+RUN rpm --rebuilddb;yum install tar gzip* bzip* wget -y
+RUN echo -e 'export JAVA_HOME=/usr/java/jdk1.8.0_131\nexport CLASSPATH=$CLASSPATH:$JAVA_HOME/li
+b:$JAVA_HOME/jre/lib\nPATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH:$HOMR/bin' >>/etc/profile
+RUN source /etc/profile;cd /usr/local/tomcat/webapps/ROOT/;jar -xf edu.war
+RUN echo '123456' | passwd --stdin root
+EXPOSE  22 8080
+# 设定运行镜像时的默认命令：输出ip，并以daemon方式启动sshd
+#CMD /usr/local/tomcat/bin/startup.sh;/usr/sbin/sshd -D
+CMD set -m;source /etc/profile;/usr/local/tomcat/bin/startup.sh;/usr/sbin/sshd -D
+
