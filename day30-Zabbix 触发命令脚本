@@ -1,0 +1,53 @@
+第1章 	Zabbix 触发命令脚本
+Zabbix监控在对服务或者设备进行监控的时候，如果被监控客户端服务异常，满足触发器，默认可以发送邮件报警、短信报警及微信报警。Zabbix还可以远程执行命令或者脚本对部分故障实现自动修复。
+使用Zabbix远程执行命令，首先需在zabbix客户端配置文件开启对远程命令的支持，在zabbix_agentd.conf行尾加入如下代码，并重启服务 
+EnableRemoteCommands = 1	
+#允许远程服务器在客户端执行命令或者脚本。默认是0 是禁止 1是开启。
+在zabbix_agent端口来配置一个rm_disk.sh
+ 
+在server端配置一个动作：boot目录容量小于20%会触发报警
+ 
+配置远程执行脚本的参数
+ 
+配置完成后测试
+错误提示：
+ 
+解决错误：远程执行命令没有开启
+需要在配置文件中开启EnableRemoteCommands = 1	
+#允许远程服务器在客户端执行命令或者脚本。默认是0 是禁止 1是开启。
+需要
+ 
+命令执行成功
+ 
+
+
+
+
+
+错误提示：no active checks on server [10.0.0.5:10051]: host [10.0.0.6] not found
+解决错误：
+1.	使用ping命令测试主机是否互通
+2.	关闭防火墙或者selinux，iptables规则清空
+3.	检查zabbix_server端web服务器配置的zabbix客户端的配置参数查看主机地址是否正常配置。
+4.	查看日志通过分析日志tail –fn 20   /tmp/zabbix_agentd.log  zabbix_server.log 排查错误
+5.	重启agent端服务，通过/etc/init.d/zabbix_agentd restart 
+6.	重启server端服务，通过/etc/init.d/zabbix_agentd|server restart 
+7.	多刷新一下zabbix_server 日志，直到出现以下提示
+74806:20180912:101109.920 escalation cancelled: host "10.0.0.6" disabled.
+ 74775:20180912:101135.121 enabling Zabbix agent checks on host "10.0.0.6": host became available
+
+
+
+
+
+
+
+
+
+
+
+关于隐藏监控项的内容：其实是监控项定义的变量，变量把Linux中的所有目录都当前一个变量来看，当我们使用到其中一个目录时，会自动创建出一些隐藏的监控项。
+ 
+#监控项中有目录的变量
+ 
+
