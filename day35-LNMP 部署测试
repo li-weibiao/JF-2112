@@ -1,0 +1,37 @@
+第1章 	LNMP 部署测试
+多数流行的HTTP server都支持FastCGI，包括Apache、Nginx和lighttpd等。同时，FastCGI也被许多脚本语言支持，其中就有PHP,perl。
+FastCGI是从CGI发展改进而来的。传统CGI接口方式的主要缺点是性能很差，因为每次HTTP服务器遇到动态程序时都需要重新启动脚本解析器来执行解析，然后将结果返回给HTTP服务器。这在处理高并发访问时几乎是不可用的。另外传统的CGI接口方式安全性也很差，现在已经很少使用了 
+ 
+CGI：common gateway interface 通用网关接口
+FastCGI：fast common gateway interface 快速通用网关接口
+PHP-FPM：PHP-Fast CGI Process Manager
+php-cgi是CGI协议的实现，
+PHP-fpm是FastCGI协议的执行进程管理器，用来管理php-cgi进程处理php请求包。
+CGI 就是web服务器如nginx跟后端动态脚本语言如PHP通信的协议接口。
+
+FastCGI接口方式采用C/S结构，可以将HTTP服务器和脚本解析服务器（PHP）分开，同时在（PHP）脚本解析服务器上启动一个或者多个脚本解析守护进程php-cgi|php-fpm。当nginx服务器每次遇到动态程序时，可以将其直接交付给FastCGI进程管理器（php-fpm）来执行，然后将得到的结果返回给浏览器。这种方式可以让HTTP服务器专一地处理静态请求或者将动态脚本服务器的结果返回给客户端，这在很大程度上提高了整个应用系统的性能。
+ 
+FastCGI是一个协议，php-fpm实现了这个协议，php-fpm的FastCGI协议需要有进程池，php-fpm实现的FastCGI进程叫php-cgi，所以php-fpm其实是他自身的FastCGI或php-cgi进程管理器
+fastcgi_pass   127.0.0.1:9000;# 指定了fastcgi进程侦听的端口,nginx就是通过这里与php交互的
+       fastcgi_index  index.php;#脚本请求的前缀名
+fastcgi_param  SCRIPT_FILENAME  /usr/local/nginx/html$fastcgi_script_name; #脚本文件请求的路径
+        include        fastcgi_params;
+location ~ \.php$ {
+            root           html;
+            fastcgi_pass   127.0.0.1:9000;
+            fastcgi_index  index.php;
+            fastcgi_param  SCRIPT_FILENAME  /usr/local/nginx/html$fastcgi_script_name;
+            include        fastcgi_params;
+        }
+ 
+Nginx+php-fpm整体工作流程
+ 1)、FastCGI进程管理器php-fpm自身初始化，启动主进程php-fpm和启动start_servers个CGI 子进程。
+主进程php-fpm主要是管理fastcgi子进程，监听9000端口。
+fastcgi子进程等待来自Web Server的连接。
+ 
+2)、当客户端请求到达Web Server Nginx是时，Nginx通过location指令，将所有以php为后缀的文件都交给127.0.0.1:9000来处理。
+3）FastCGI进程管理器PHP-FPM选择并连接到一个子进程php-cgi解释器。Web server将CGI环境变量和标准输入发送到FastCGI子进程php-cgi。
+4)、FastCGI中子进程（php-cgi）完成处理后将标准输出和错误信息从同一连接返回Web Server（nginx）。当FastCGI子进程（php-cgi）关闭连接时，请求便告处理完成。
+5)、FastCGI子进程（php-cgi）接着等待并处理来自FastCGI进程管理器（运行在 WebServer中）的下一个连接请求包。
+
+
