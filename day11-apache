@@ -1,0 +1,45 @@
+JF2112班DAY-11课程笔记
+1.1 	Apache入门简介
+1.1.1  进程和线程概念 
+1.	进程是操作系统分配资源的基本单位，进程是程序的实体，程序软件是静止的，而进程是将程序运行起来，进程是活动的。
+2.	线程和进程区别？线程是进程的基本单位，范围比进程要小，一个进程中包含一个线程或者多个线程，所有的线程共享该进程的内存空间，如果进程挂掉，所有线程崩溃，如果一个线程异常退出，连同其他的线程或者进程会崩溃，多线程的好处是提高访问效率、并发高网站采用多进程-多线程工作。
+	目前主流的WEB服务器软件包括：Apache、Nginx、Lighttpd、IIS、Resin、Tomcat、WebLogic、Jetty等。
+	Apache是一个古老的web服务器软件，基于apache基金会的开发的，该服务器默认只能发布静态网页（跟数据库没有发生交互的）；
+	Apache web服务器是一种多模块式的软件，模块丰富，每个模块都能完成不同功能。
+	Apache web服务器像一辆汽车，必须要有运动引擎（发动机），运动引擎称为工作模式，处理访问请求，通常有三种模式：prefork，worker，event。
+	Apache 默认引擎为prefork，其特点启动startservers个工作的进程，每一个工作进程在特定的时间只能处理一个请求，支持预派生模式，好处就是方便请求到来时不用临时生成请求，提升web服务器的性能，多进程方式，比较消耗内存和系统资源。
+	Worker MPM模式：使用多个进程，每个子进程包含多个线程，每个线程在某个确定的时间只能维持一个连接，内存占用量比较小，适合大并发、高流量的WEB服务器。Worker MPM缺点是一个线程崩溃，整个进程就会连同其任何线程一起挂掉。
+
+1.2 	源码包安装httpd
+Wget  http://mirrors.hust.edu.cn/apache/httpd/httpd-2.4.29.tar.bz2
+
+ 
+
+1)./configure 检测系统环境是否能够达到编译的请求
+2）make 根据生成的makefile文件来执行对应的编译
+3）make install 安装软件配置文件
+wget http://archive.apache.org/dist/httpd/httpd-2.4.29.tar.gz
+Apache WEB服务器安装步骤如下：
+tar  -xjvf  httpd-2.4.29.tar.bz2			tar工具解压httpd包；
+cd httpd-2.4.29/							进入解压后目录；
+yum install apr apr-devel apr-util apr-util-devel -y	        安装APR相关优化模块；
+APR(Apache portable Run-time libraries，Apache可移植运行库)的目的如其名称一样，主要为上层的应用程序提供一个可以跨越多操作系统平台使用的底层支持接口库。
+./configure --prefix=/usr/local/apache2/ --enable-rewrite --enable-so     预编译Apache，启用rewrite规则、启用动态加载库；
+编译的时候可以通过configure的参数来指定
+--with-mpm=prefork|worker|event（）
+也可以编译为三种都支持，通过修改配置来更换。
+--enable-mpms-shared=all
+make						编译
+make install					安装Apache2.4.29安装完毕，如图10-1所示：
+ 
+图10-1 Apache2.2.32安装图解
+
+启动Apache服务，临时关闭selinux、firewalld防火墙：
+/usr/local/apache2/bin/apachectl start
+setenforce 0
+systemctl  stop   firewalld.service
+查看Apache服务进程，通过客户端浏览器访问http://192.168.111.131/，如图10-2（a）、10-2（b）所示：
+ 图10-2（a） Apache启动及查看进程
+ 
+图10-2（b） 浏览器访问Apache WEB服务器
+
