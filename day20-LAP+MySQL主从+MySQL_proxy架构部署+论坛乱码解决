@@ -1,0 +1,71 @@
+1.1 	LAP+MySQL主从+MySQL_proxy架构部署
+MYSQL读写分离的原理其实就是让Master数据库处理事务性增、删除、修改、更新操作（CREATE、INSERT、UPDATE、DELETE），而让Slave数据库处理SELECT操作，MYSQL读写分离前提是基于MYSQL主从复制，这样可以保证在Master上修改数据，Slave同步之后，WEB应用可以读取到Slave端的数据。
+MySQL_proxy要做的就是介入各个协议的过程，proxy以服务器的身份接收客户端请求，对请求进行分析，分析客户端SQL请求是需要读取（查询）还是写入（增加、删除、更新），然后将分析出的请求进行转发。增加、删除、更新等操作转发给master服务器，查询转发给slave服务器。
+Mysql-Proxy允许用户指定Lua脚本对SQL请求进行拦截，对请求进行分析与修改，还允许用户指定Lua脚本对服务器的返回结果进行修改，加入一些结果集或者去除一些结果集，对SQL的请求通常为读请求、写请求，基于Lua脚本，可以实现将SQL读请求转发至后端Slave服务器，将SQL写请求转发至后端Master服务器。
+1.1.1  构建MySQL主从服务器
+yum安装配置主从服务
+主服务器配置参数
+ 
+主库配置命令
+ 
+从库配置参数
+ 
+从库配置命令
+ 
+1.1.2  构建MySQL-proxy代理服务器
+（1）	下载MYSQL-Proxy软件版本，解压并重命名至/usr/local/mysql-proxy，命令如下：
+wget http://ftp.ntu.edu.tw/pub/MySQL/Downloads/MySQL-Proxy/mysql-proxy-0.8.4-linux-el6-x86-64bit.tar.gz  
+useradd  -r  mysql-proxy
+tar  zxvf  mysql-proxy-0.8.4-linux-el6-x86-64bit.tar.gz  -C  /usr/local
+mv  /usr/local/mysql-proxy-0.8.4-linux-el6-x86-64bit  /usr/local/mysql-proxy
+ 
+（2）	环境变量配置文件/etc/profile中加入如下代码保存退出，然后执行source /etc/profile使环境变量配置生效即可：
+export  PATH=$PATH:/usr/local/mysql-proxy/bin/
+source /etc/profile
+（3）	启动MYSQL-Proxy中间件，命令如下：
+mysql-proxy --daemon --log-level=debug --user=mysql-proxy --keepalive --log-file=/var/log/mysql-proxy.log --plugins="proxy" --proxy-backend-addresses="192.168.50.130:3306" --proxy-read-only-backend-addresses="192.168.50.131:3306" --proxy-lua-script="/usr/local/mysql-proxy/share/doc/mysql-proxy/rw-splitting.lua" --plugins=admin --admin-username="admin" --admin-password="admin" --admin-lua-script="/usr/local/mysql-proxy/lib/mysql-proxy/lua/admin.lua"
+（4）	Mysql-Proxy的相关参数详解如下：
+--help-all   				         ：获取全部帮助信息；
+--proxy-address=host:port 	         ：代理服务监听的地址和端口，默认为4040；
+--admin-address=host:port  	     ：管理模块监听的地址和端口，默认为4041；
+--proxy-backend-addresses=host:port   ：后端主mysql服务器的地址和端口；
+--proxy-read-only-backend-addresses=host:port ：后端只读mysql服务器的地址和端口；
+--proxy-lua-script=file_name          ：完成mysql代理功能的Lua脚本；
+--daemon  						 ：以守护进程模式启动mysql-proxy；
+--keepalive 					 	 ：在mysql-proxy崩溃时尝试重启之；
+--log-file=/path/to/log_file_name 	     ：日志文件名称；
+--log-level=level 					 ：日志级别；
+--log-use-syslog 					 ：基于syslog记录日志；
+--plugins=plugin					 ：在mysql-proxy启动时加载的插件；
+--user=user_name  				 ：运行mysql-proxy进程的用户；
+--defaults-file=/path/to/conf_file_name ：默认使用的配置文件路径，其配置段使用[mysql-proxy]标识；
+--proxy-skip-profiling 				 ：禁用profile；
+--pid-file=/path/to/pid_file_name 	     ：进程文件名；
+ 
+Admin用于是管理模块监听的地址和端口，默认为4041；主要的作用就是管理和查询proxy自身的状态以及数据库的状态，本身和其他的数据库没有关系。Mysql –h10.0.0.4（mysql-proxy本机） -uadmin –padmin –P4041
+4040为proxy代理端口用于WEB应用连接，是proxy生成的对外的前端端口，也是discuz、wordPross论坛的连接的数据端口，后端将收到客户端的数据在proxy服务器中进行分析命令是读取（查询）还是写入（删除、写入、修改），读取的请求转发给从库的3306端口，写入的请求转发给主库的3306端口。
+--plugins=admin --admin-username=admin --admin-password=admin --admin-lua-script=/usr/local/mysql-proxy/lib/mysql-proxy/lua/admin.lua
+建立一个管理mysql-proxy平台的用户，和其他数据库没有关系。
+
+错误：[root@localhost bin]# mysql -h10.0.0.4  -uroot -p123456 -P4040 -e'show database;'
+ERROR 1045 (28000): Access denied for user 'root'@'10.0.0.4' (using password: YES)
+解决方法：需要在MySQL主从设置账号和密码进行登录，可以在主从上面授权grant all on *.* to root@'%' identified by "123456";
+ 
+配置好读写分离的参数，链接MySQL主从库UP状态即为完成。
+ 
+ 
+配置的MySQL_Proxy地址为数据库的前端地址。
+ 
+
+
+
+ 
+乱码问题解决：
+vim /etc/mysql/my.cnf 。如下修改：
+[client]
+default-character-set=utf8
+[mysqld]
+default-storage-engine=INNODB
+character-set-server=utf8
+collation-server=utf8_general_ci
+
