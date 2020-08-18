@@ -1,0 +1,82 @@
+1、	Linux运维发展趋势&努力方向
+1）	随着互联网IT技术发展，IT运维人员扮演重要的角色的，未来企业对运维人才要求越来越多，同时要求运维人员综合能力越来越强大；
+2）	做IT运维的同学非常多，大都停留在初级运维、基础运维、中级运维，很多同学都只会安装、部署各种软件服务，高级运维和资深运维非常少，高级运维对标哪些工作呢？
+	尽量偏向业务系统、网站故障处理；
+	Linux各个软件、配置文件性能优化；
+	熟练掌握SHELL、Python编程方面；
+	熟练使用Ansible、Saltstack批量管理服务器；
+	熟练WEB架构：LAMP、LNMP、LE（Engine X）MP、LT（Taobao|Tomcat）MP、LNAMP、LVS、KEEPALIVED；
+	Docker虚拟化、K8S分布式集群方面；
+3）	Linux运维后期从事的岗位：（北、上、广、深、杭）
+	Linux初级运维工程师（6K-8K）
+Linux系统安装、命令操作、基础服务（NTP、NFS、APACHE、LAMP、Nginx、Tomcat）搭建、简单的SHELL（备份MYSQL、安装Nginx）；
+	Linux中级运维工程师（8K-12K）
+熟练掌握SHELL编程（if、for、while、case、系统变量、环境变量、参数、Find、Sed、awk、Grep、各种应用脚本）；
+熟练掌握Nginx、Tomcat、MYSQL配置文件、参数优化；
+熟练掌握Zabbix分布式、批量监控、邮件、微信报警、故障处理；
+熟练掌握基于SHELL、Ansible批量维护50台服务器实战技能；
+	Linux高级运维工程师（13K-20K）
+	Linux资深运维工程师（21K-30K）
+	Linux运维经理&运维架构师（25K-40K+）
+	Linux运维总监&全栈运维+开发工程师（40K+）
+2、	Linux运维必备技能总结-基础篇
+	熟悉Windows、Linux系统特点、发展历史、系统分区&安装、计算机硬件组成（CPU、MEM、DISK）、服务器品牌（DELL R730、R740、R820、HP 380 GEN）；
+	熟练Linux操作系统启动流程、运行级别、GRUB、BIOS、MBR、GPT、密码破解、修复模式；
+	熟练Linux操作系统硬盘分区、硬盘管理、Block、Inode计算、磁盘扩容、文件系统、磁盘只读修复等；
+	熟练掌握Linux系统目录（boot、root、dev、home、usr）功能、SHELL终端识别（#|$），掌握Linux系统下必备的命令；
+	Linux基础命令一：
+Set、env、source、iptables、Firewall-cmd、crontab、cd、echo、export、mysql、printf、if、for、while、case、select、wc、xargs、exec、su、sudo、sort、uniq、nohup、screen、kill、killall、pkill、shutdown、reboot、halt、init；
+	Linux基础命令二：
+Poweroff、history、clear、python、locate、ssh、at、which、whereis、sh、man、more、sysctl、help、jar、tr、tac、ssh-keygen、date、ntpdate、ssh-copy-id、snmpwalk、ln、link、diff；
+	Linux文件管理：
+touch、mkdir、rmdir、vi、vim、ls、file、cp、scp、cat、head、more、less、find、grep、sed、awk、mv、rm、tail、rsync、stats；
+	Linux用户管理：
+Useradd、userdel、usermod、groupadd、groupdel、groupmod、chmod（rwx、ugo、st）、chown、chattr、lsattr、passwd、chgrp、who、whoami、last、id、lastlog、chpasswd、umask、setfacl；
+	Linux软件管理：
+Rpm、YUM、make、chkconfig、service、systemctl、wget、rz、sz、cmake、curl、tar、unzip、gzip、zip、rar；
+	Linux资源管理：
+Fdisk、dd、du、df、top、free、uptime、w、iftop、netstat、ss、ps、lsof、iostat、mount、umount、mkfs.ext4、mkfs.xfs、fsck.ext4、parted、swapon；
+	Linux网络相关：
+Ifconfig、ip addr、route、telnet、ping、nslookup、dig、traceroute、tcpdump、nmap、hostname、uname、fping、ethtool、ifup、ifdown、nmcli、brctl；
+	熟练掌握基础服务一：NTP、DHCP、NFS、Samba、Vsftpd（匿名、系统、虚拟）配置、配置文件常见参数、故障解决和排错；
+	熟练掌握基础服务二：Apache（prefork、worker原理、工作引擎参数调优、虚拟主机、Rewrite规则）、MYSQL（安装部署、配置文件含义、参数优化、主从架构、读写分离、SQL操作、备份和还原、故障解决）、Mariadb、PHP（配置文件参数）、Redis（部署、主从架构、Redis日常命令、RDB|AOF备份、扩展掌握Redis分布式集群Codis）；
+	熟练掌握基础服务三：LAMP WEB架构工作原理、LAMP多机部署、LAP+MYSQL读写分离（MYSQL-PRXOY|MYCAT）、LAMP WEB多网站、LAMP WEB架构优化、Kickstart批量装机、Kickstart分区2T+硬盘、Kickstart+Post安装脚本、Kickstart多系统安装选择菜单；
+3、	Linux运维必备技能总结-中级篇
+	SHELL编程概念、SHELL编程意义、SHELL核心思想、SHELL编程变量、系统变量（$0、$1、$?、$#、$$、$*）、环境变量、用户变量；
+	SHELL编程各个语法实战：IF、for、while、case、select、PS3、数组、SHELL四剑客：Find、Grep、SED、AWK&整合操作案例；
+	SHELL编程各种项目脚本一：
+MYSQL|网站备份脚本、Vsftpd管理脚本、LAMP部署管理脚本、Nginx日志切割脚本、MYSQL主从&管理脚本、Tomcat多实例管理脚本、Nginx虚拟主机管理脚本、系统用户管理脚本、Linux系统配置（CPU、MEM、DISK、APP）采集脚本；
+	SHELL编程各种项目脚本二：
+修改服务器IP地址脚本、拒绝恶意IP攻击脚本、Nginx恶意访问防攻击脚本、Nginx日志UV|PV|IP统计脚本、Linux系统增量和全备脚本、自动部署（Scp、For、Rsync、Ansible、Jenkins）多网站代码脚本、Docker虚拟化管理脚本；
+	熟练掌握Nginx WEB概念、应用场景、Nginx特性、Nginx工作原理、Nginx WEB安装部署；
+	熟练掌握Nginx配置文件：Nginx.conf参数含义、user、worker、use epoll、keepalive_timeout、server、http、location、root、expires、proxy_set_header、proxy_pass、upstream;
+	熟练掌握Nginx虚拟主机、负载均衡原理、配置、反向代理、动静分离原理、实战配置；
+	熟练掌握Nginx location优先级、Rewrite规则、Nginx日志切割、Nginx日志配置、日志分析、防盗链等；
+	Nginx均衡LAMP、Tomcat集群、LNMP、LEMP、LNAMP、FastCGI、PHP-FPM（php-cgi）、Nginx+Keepalived高可用、Tomcat概念、Tomcat、JAVA、JDK、JRE、JVM之间区别、JVM虚拟机堆栈内存优化、Tomcat多实例、Tomcat自定义发布目录、Tomcat日志排错；
+	Keepalived软件概念、软件功能（健康检查、VRRP实例）、实现方式、VRRP路由冗余技术原理、组播包、优先级、Master、BACKUP状态信息、Keepalived配置&故障排错、Keepalived配置文件参数含义、Keepalived高可用切换机制和案例、Keepalived检查脚本；
+	LVS负载均衡概念、工作原理、三种转发方式（NAT、DR、TUN）工作方式、转发特点&原理、LVS常见算法（rr、lc、wrr、wlc）、LVS配置部署、LVS+Keepalived整合实战、LVS故障处理、后端RealServer异常等；
+4、	Linux运维必备技能总结-高级篇
+	Hudson|Jenkins概念和区别、应用场景、所需组件、Jenkins平台部署和配置（2.89.4）、JDK版本1.8.131；
+	Jenkins、JDK、JAVA、MAKE、ANT、Maven、Eclipse、SVN、GIT关系和区别&关联流程、掌握简单SVN和GIT仓库安装和配置、掌握简单命令操作；
+	如何使用Jenkins自动化部署PHP网站、JAVA网站、HTML网站代码等？结合SHELL编程脚本、Python脚本、Ansible管理工具；
+	能够对Jenkins实现多节点部署和管理，让多个任务分批执行、任务运行更加的高效、Jenkins如何实现插件安装、JOB工程邮件报警等；
+	熟练对Jenkins设置用户名和密码、添加多用户、添加项目SVN|GIT工程密码管理；
+	Docker虚拟化概念、虚拟化应用场景、KVM、XEN、ESXI之间关系、Docker底层组件（LXC、Cgroup、Aufs）、Devicemapper、OverlayFS特点；
+	Docker底层硬件配置选型、操作系统选择、Docker CE和EE版本选择、选择CE（社区版）版本1.18，通过修改YUM源&YUM安装即可；
+	Docker技术C/S模式、Docker引擎修改国内仓库源、构建企业私有仓库源、添加修改本地仓库源、备份本地仓库源；
+	熟练掌握Docker必备命令30+：
+Search、images、pull、push、run、save、load、commit、exec、inspect、stop、start、kill、rm、ps、ps –a、export、import、rmi、build、tag、top、stat（--no-stream）、history、logs；
+	熟练掌握Docker四种网络方式：None、Bridge、Container、Host，四种模式使用场景、四种模式特点和区别、如何实现容器上网、如何实现跨物理机容器通信、Pipework工具使用方法；
+	熟练掌握Docker镜像、容器、仓库概念和原理，掌握Docker镜像或者容器备份、还原、镜像制作、掌握Dockerfile镜像制作语法、制作规范、企业业务镜像制作方法和实战，结合Jenkins实现自动化更新和部署；
+	熟练掌握Docker容器资源扩容、资源限制、CPU、MEM、DISK、NET，掌握资源监控、基于Cadvisor、Zabbix监控Docker容器、编写SHELL脚本管理Docker容器、Docker容器实现EXCEL（CSV文件）或者WEB界面管理；
+	课外拓展基于Docker构建LNMP、LAMP、ELK、Zabbix、Redis、MYSQL、Mariadb应用业务、了解一些Docker Compose（用于对容器任务管理的篇排工具，将多个任务写成yaml文件：下载镜像、启动镜像、更新代码、重启服务）管理（K8S+SHELL+Ansible代替）；
+	ELK
+	IPtables|Firewalld
+	K8S
+	Linux内核调优
+
+
+
+
+
+
