@@ -1,0 +1,113 @@
+1、	K8S云计算平台实战操作
+1）	K8S云计算平台UI WEB界面，管理员可以通过WEB界面实现云计算平台资源的管理工作，基于WEB平台创建、删除、更新、部署容器（APP业务）资源；
+2）	掌握K8S节点的概念，NODE节点主要是用于资源分配、资源池，真正消耗资源的Node节点，而不是Master节点，可以添加节点、删除节点；
+ 
+3）	K8S WEB平台，创建“部署”，“部署”本身的含义表示某个具体的业务名称、软件名称、系统名称等，基于应用名称可以部署容器组（容器集群），容器组平均分配，每个NODE节点具备相同的数量的容器，生产环境中通过应用名称来区分不同服务或者系统；
+ 
+ 
+ 
+ 
+4）	基于K8S WEB平台，创建企业CentOS6.x虚拟机，操作方法：
+ 
+5）	基于kubectl命令行，创建nginx WEB容器，编写nginx.yaml文件，yaml文件代码如下：
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: bj-nginx-v1
+  namespace: default
+  labels:
+    k8s-app: bj-nginx-v1
+    kubernetes.io/cluster-service: "true"
+spec:
+  selector:
+    matchLabels:
+      k8s-app: bj-nginx-v1
+  template:
+    metadata:
+      labels:
+        k8s-app: bj-nginx-v1
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ''
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exis
+ts"}]'
+    spec:
+      containers:
+      - name: bj-nginx-v1
+        image: docker.io/nginx
+        resources:
+          limits:
+            cpu: 100m
+            memory: 50Mi 
+requests:
+            cpu: 100m
+            memory: 50Mi
+kubectl create -f nginx.yaml
+kubectl delete -f nginx.yaml
+6）	基于K8S WEB平台，创建CentOS系统，并且设置CPU和MEM资源配置：
+	OS：CentOS 6.x Linux x86_64
+	CPU：4C
+	MEM：8G
+	DISK：40GB
+	NET：1000Mb（共享）
+ 
+ 
+2、	K8S Service概念&实战演练
+1）	Service是K8S最核心的概念，通过创建Service抽象层，可以为一组具有相同功能的POD应用（应用组）提供统一的访问入口，并且将请求进行负载分发到后端的各个容器应用上。
+2）	创建Service访问入口，分为两种服务：内部服务、外部服务：
+	创建Service为内部服务，默认会启动一个随机VIP地址（虚拟的），将30080端口映射至后端容器的端口（80），通过在局域网访问VIP：30080访问后端POD集群应用；
+ 
+ 
+	创建Service为外部服务，默认会启动一个随机VIP地址（虚拟的），将30081端口映射至后端容器的端口（80），通过在局域网访问VIP：30081访问后端POD集群应用，默认会生成两个端口：（30081、随机PORT），通过NODE的IP另外一个随机端口可以在浏览器访问；
+ 
+ 
+ 
+Docker物理机（64C256G2T）-虚拟生成（15台）虚拟机（4C8G100G）；
+3、	K8S容器升级实战演练
+1）	K8S最终管理的对象是Docker容器，生产环境中，Docker容器经常会更新数据和内容，K8S容器更新方案：
+	将更新的内容通过kubectl cp或者docker cp至新的容器；
+for i in `docker ps|grep -w nginx|grep -v "pod"|cut -d" " -f 1`;do docker cp index.html $i:/usr/share/nginx/html/ ;done
+ 
+ 
+	将新的容器数据Commit提交为新镜像；
+登陆Docker容器系统，更新内容，Commit提交为新的镜像；
+docker ps |grep bj-nginx-vv1-982442853-p9lt5
+docker commit 1d823c26d562
+ 
+docker tag 118bb52b482b nginx:v1
+修改“部署”-应用APP的原始镜像为最新的nginx:v1镜像即可；
+ 
+	通过Dockerfile方案制作新的镜像；
+基于Dockerfile方案跟Docker commit类似的操作，更新方法完全一样；
+基于Kubectl命令行更新，将bj-nginx-vv1部署应用的镜像修改为最新的镜像名称：nginx:v1，命令如下：
+kubectl -n default set image deployments/bj-nginx-vv1 bj-nginx-vv1=nginx:v1
+ 
+kubectl -n default set image deployments/bj-nginx-vv1 bj-nginx-vv1=docker.io/lemonbar/centos6-ssh
+ 
+将K8S POD容器组内容回滚，可以理解为返回上一个版本或者其他的相应版本、直接全新更新为特定版本（更新镜像）；
+kubectl -n default rollout undo deployments/bj-nginx-vv1
+kubectl -n default set image deployments/bj-nginx-vv1 bj-nginx-vv1=docker.io/lemonbar/centos6-ssh
+查看当前K8S升级的版本信息；
+kubectl rollout history deploy/bj-nginx-vv1
+ 
+kubectl rollout history deploy/bj-nginx-vv1 --revision=3
+4、	K8S容器升级&Jenkins自动更新
+1）	构建一套Jenkins持续集成平台；
+2）	创建以业务系统（label）命名的工程；
+3）	部署一套SVN|GIT文件仓库服务器；
+4）	构建一套Docker私有仓库存储Docker镜像的；
+5）	编写SHELL脚本调用K8S kubectl指令实现镜像更新；
+kubectl -n default set image deployments/nginx-v1 nginx-v1=docker.io/nginx:v1
+docker.io/nginx:v1 Docker镜像提前上传至Docker私有仓库；
+5、	基于Zabbix监控K8S POD容器
+1）	构建一套Zabbix监控平台；
+2）	查找相关Zabbix 监控K8S模板；
+3）	可以在Docker容器中安装Agent，进行特定配置；
+4）	Docker容器尽量以操作系统方式启动，方便管理；
+6、	K8S POD容器使用NFS|NAS|CEPH持久化存储
+1）	构建一套NFS|NAS|CEPH|MFS文件服务器；
+2）	创建K8S持久化存储设备，相当于挂载远程NFS存储；
+3）	启动K8S容器-关联NFS存储目录（手工关联）；
+4）	启动K8S容器-关联NFS存储目录（自动关联）；
+ 
+
+
