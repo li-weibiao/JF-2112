@@ -1,0 +1,108 @@
+1.1 	yum安装和源码的区别
+yum安装服务或者软件一般是用来安装依赖库或者小服务（nfs、vsftpd），安装方便，快捷，但是不能指定版本，配置的目录散乱，对于企业来讲大服务（httpd、MySQL、nginx、tomcat），建议用源码来装，加载模块方便，指定目录简单，方便升级，重载模块。
+Apr （apache 的可移植运行库）主要为上层的应用程序提供一个跨越多操作平台使用的底层库接口库。
+ 
+<Directory "/test/jf1">  
+          Options Indexes MultiViews  
+Options这个子句用来说明一些主要的设置，目前可以使用的设置有Indexes，Includes，FollowSymLinks，ExecCGI，MultiView，当然还有两个最简单的选择就是None和All。
+　　None是禁止所有选择，而All 允许上面的所有Options。一般我们主要关心的是Indexes 和FollowSymLinks。Indexes 是设定是否允许在目录下面没有index.html 的时候显示目录，而FollowSymLinks 决定是否可以通过符号连接跨越DocumentRoot。
+          AllowOverride None  
+　AllowOverride 定义是否允许各个目录用目录中的.htaccess(后面解释)覆盖这里设定的Options。它的选择有Options，FileInfo，AuthConfig，Limit 或者它们的组合，当然还有None 和All。
+          Order allow,deny  
+它有两种用法，即Order allow,deny 或者Order deny,allow。简单地说，它用来设置是先执行deny 还是先执行allow，例如，Order deny,allow 意味着先看deny 行，再看allow 行，这样如果deny from all 再allow from 202.112.58.0/24 后来的allow子句就会超越deny 而对202.112.58.x 打开访问。
+          Allow from all  
+这两个选项和Order 一起使用，Allow 允许某个地址来的连接请求，Deny 则禁止这个请求，例如在Order deny，allow 的情况下，Deny from all，Allow from 192.168.12.0/24 表示只有192.168.12.x 的用户可以访问这个目录。
+          DirectoryIndex index.html 
+    配置默认的网页后缀
+</Directory>
+
+
+
+1.2 	MySQL数据库的简介和应用
+关系数据库管理系统(Relational Database Management System，RDBMS)，是将数据组织为相关的行和列的系统，而管理关系数据库的计算机软件就是关系数据库管理系统，常用的关系型数据库软件有MYSQL、Mariadb、Oracle、SQL Server、PostgreSQL、DB2等。）
+RDBMS数据库的特点如下：
+	数据以表格的形式出现；
+	每行记录数据的真实内容；
+	每列记录数据真实内容的数据域；
+	无数的行和列组成一张表；
+	若干的表组成一个数据库；
+MYSQL引擎包括：ISAM、MyISAM、InnoDB 、MEMORY、CSV、BLACKHOLE、ARCHIVE、PERFORMANCE_SCHEMA、Berkeley、Merge、Federated、Cluster/NDB等，其中MyISAM、InnoDB使用最为广泛，mysql5.5以后默认使用的引擎是Innodb。
+数据库事务：是指逻辑上对数据的一组操作，这组操作要一次全部成功，如果失败，则全部失败，因为事务是不可分割。
+事务管理语句：insert、update、delete等
+InnoDB事务型数据库的首选引擎，支持ACID事务，ACID包括：原子性（不可分割性）（Atomicity）、一致性（Consistency）、隔离性（Isolation）、持久性（Durability），一个支持事务（Transaction）的数据库，必需要具有这四种特性，否则在执行事务过程无法保证数据的正确性。
+	原子性：一个事务中所有的操作，要么全部完成，要么全部不完成，不会结束在中间某个环节。事务在执行过程中发生错误，会被回滚成事务开始前的状态。
+	一致性：在事务开始之前和事务结束以后，数据库的完整性没有被破坏。
+	隔离性：数据库运行多个并发事务同时对数据进行读写和修改的能力，防止多个事务并发执行由于交叉导致数据的不同。
+隔离性不同级别：读未提交、读提交、可重复读、串行化。
+	持久性：事务处理完成后，对数据的修改是永久的。
+MyISAM类型的数据库表强调的是性能，其执行数度比InnoDB类型更快，但不提供事务支持，不支持外键，如果执行大量的SELECT(查询)操作，MyISAM是更好的选择，支持表锁。
+MySQL数据库安装方法有两种，一种是yum/rpm通过YUM源在线安装，另外一种是通过源码软件编译安装。
+Cmake 是一种跨平台的编译工具，比configure更高级，cmake主要编写cmakelists.txt,然后用cmake命令将cmakelists.txt转化成make需要的Makefile文件，最后用make命令编译源码生成的可执行程序。
+Cmake工具和configure工具，configure二进制程序用来生成Makefile文件，Makefile记录软件需要的环境和要编译的参数。
+MySQL报错：
+ 
+解决方法：从别的机器上拷贝一个cmakelists.txt,重新解压MySQL压缩包。
+
+（1）	源码安装MYSQL5.5.20方法，通过cmake、make、make install三个步骤实现。 
+wget http://down1.chinaunix.net/distfiles/mysql-5.5.20.tar.gz 
+tar –zxf mysql-5.5.20
+cd mysql-5.5.20
+yum install  gcc c ncurses-devel cmake libaio bison gcc-c++  git  ncurses-devel ncurses -y PCRE是一个Perl库，包括 perl 兼容的正则表达式库。PCRE是一个轻量级的函数库，比Boost之类的正则表达式库小得多。
+CMake是一种跨平台编译工具，比make更为高级，使用起来要方便得多。CMake主要是编写CMakeLists.txt文件，然后用cmake命令将CMakeLists.txt文件转化为make所需要的makefile文件，最后用make命令编译源码生成可执行程序或共享库（so(shared object)）。
+ncurses是字符终端下屏幕控制的基本库，mysql登录时使用到了相应的功能。
+libaio是Linux下的一个异步非阻塞接口，它提供了以异步非阻塞方式来读写文件的方式，读写效率比较高。libaio的读写过程简单说来就是你发出一个读写请求，然后你可以开始做其他事情，当读写过程结束时libaio会通知你你的这次请求已经完成（而select模型是告诉你读写已经就绪）
+Bison是一种通用的解析器生成器，它将一个LALR（1）上下文无关文法的语法描述转换成一个C程序来解析该语法。一旦您精通Bison，您就可以使用它来开发广泛的语言解析器，从简单的桌面计算器到复杂的编程语言。
+
+cmake  .  -DCMAKE_INSTALL_PREFIX=/usr/local/mysql55/ \
+-DMYSQL_UNIX_ADDR=/tmp/mysql.sock \
+-DMYSQL_DATADIR=/data/mysql \
+-DSYSCONFDIR=/etc \
+-DMYSQL_USER=mysql \
+-DMYSQL_TCP_PORT=3306 \
+-DWITH_XTRADB_STORAGE_ENGINE=1 \
+-DWITH_INNOBASE_STORAGE_ENGINE=1 \
+-DWITH_PARTITION_STORAGE_ENGINE=1 \
+-DWITH_BLACKHOLE_STORAGE_ENGINE=1 \
+-DWITH_MYISAM_STORAGE_ENGINE=1 \
+-DWITH_READLINE=1 \
+-DENABLED_LOCAL_INFILE=1 \
+-DWITH_EXTRA_CHARSETS=1 \
+-DDEFAULT_CHARSET=utf8 \
+-DDEFAULT_COLLATION=utf8_general_ci \
+-DEXTRA_CHARSETS=all \
+-DWITH_BIG_TABLES=1 \
+-DWITH_DEBUG=0
+make &&make install
+cd /usr/local/mysql55/ 
+\cp  -f  support-files/my-large.cnf /etc/my.cnf
+\cp  -f support-files/mysql.server /etc/init.d/mysqld 
+chkconfig --add mysqld 
+chkconfig --level 35 mysqld on
+mkdir -p  /data/mysql
+useradd  mysql
+/usr/local/mysql55/scripts/mysql_install_db  --user=mysql --datadir=/data/mysql --basedir=/usr/local/mysql55/
+chown -R mysql /data/mysql/
+ln  -s  /usr/local/mysql55/bin/* /usr/bin/
+service  mysqld  restart
+查看MYSQL启动进程
+ 
+
+启动MariaDB报错信息如下：
+Systemctl restart mariadb.service
+Job for mariadb.service failed because the control process exited with error code. See "systemctl status mariadb.service" and "journalctl -xe" for details.
+解决方法：查看错误日志：journalctl –xe
+查看端口是否被占用：netstat -tnlp|grep 3306
+最终的判断，MYSQL进程已经存在，无法启动Mariadb，解决方法，停止原来的MYSQL服务；
+MYSQL最常见的报错信息
+Redirecting to /bin/systemctl restart  mariadb.service
+Job for mariadb.service failed because the control process exited with error code. See "systemctl status mariadb.service" and "journalctl -xe" for details.
+解决方法：
+	使用journalctl –xe查看MYSQL错误信息；
+	关闭服务器selinux安全策略，setenforce 0；
+	检查MYSQL|Mariadb通过什么样的方式部署的；
+	检查其配置文件/etc/my.cnf，datadir数据目录是否配置；
+	确认数据库的数据目录mysql用户是否拥有读写权限；
+	检查数据库目录是否初始化，是否包括mysql、test基础库；
+	检查socket文件所在的路径，是否存在socket文件，权限是否正确；
+ 
+ 
