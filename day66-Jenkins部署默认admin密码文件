@@ -1,0 +1,55 @@
+1、	Jenkins部署默认admin密码文件
+cat /root/.jenkins/secrets/initialAdminPassword
+可以修改，同时可以登陆WEB平台修改admin默认密码；
+ 
+2、	Jenkins持续集成-发布JAVA网站代码
+1）	主流的互联网IT编程语言：HTML、ASP、C、C++、PHP、JAVA、GO、Python等，被互联网广泛采用，而且用于WEB开发方向：HTML、PHP、JAVA等；
+2）	Jenkins是开源、免费的软件项目管理平台，真正底层处理业务各个模块，Jenkins将各个模块进行组合，将模块、步骤、流程关联起来；
+3）	JAVA网站代码通常开发人员使用Ant、Maven对源代码进行管理：网站源码编译、代码打包、代码单元测试、代码BUG处理等，而JAVA网站代码（业务系统）通过软件去编程的呢？Eclipse|IDEA等；
+4）	企业需求，JAVA开发人员开发了一套JAVA业务系统，命名：EDU（教育系统），开发人员将业务系统源代码上传到SVN文件管理服务器，作为运维人员，如何配置Jenkins并且实现代码自动部署和发布呢？
+	基于Jenkins WEB平台-创建JOB工程（Maven风格）；
+	配置JOB工程名称：www.jfedu.net（以业务系统名称命名）；
+	填写SVN|GIT仓库的URL访问地址（用于远程下载源代码）；
+	Jenkins服务器部署Maven软件工具&设置JDK和Maven工具路径；（否则无法进行）；
+ 
+	单击项目工程-立即构建-产生JAVA的WAR包；（自动化）
+	将网站代码WAR拷贝或者部署至远程服务器（手工方式实现）；
+	将edu.war包批量部署到如下4台云主机服务器：
+172.17.0.2
+172.17.0.3
+172.17.0.4
+172.17.0.5
+ 
+Ansible部署4台Tomcat+JDK+EDU命令如下：
+ansible www-edu -m  copy -a "src=/root/www-edu/apache-tomcat-8.0.50.tar.gz dest=/root/"
+ansible www-edu -m  copy -a "src=/root/www-edu/jdk1.8.0_131.tar.gz dest=/root/"
+ansible www-edu -m shell -a "yum install -y tar gzip*"
+ansible www-edu -m shell -a "cd /root;tar -xf apache-tomcat-8.0.50.tar.gz"
+ansible www-edu -m shell -a "cd /root;tar -xf jdk1.8.0_131.tar.gz"
+ansible www-edu -m shell -a "cd /root;mkdir -p /usr/java/;mv jdk1.8.0_131 /usr/java/;mv apache-tomcat-8.0.50 /usr/local/tomca
+t/"
+ansible www-edu -m shell -a "sed -i '/JAVA_HOME/d;/CLASSPATH/d' /etc/profile"
+ansible www-edu -m shell -a  "echo -e 'export JAVA_HOME=/usr/java/jdk1.8.0_131\nexport CLASSPATH=\$CLASSPATH:\$JAVA_HOME/lib:
+\$JAVA_HOME/jre/lib' >>/etc/profile"
+ansible www-edu -m shell -a  "rm -rf /usr/local/tomcat/webapps/*;mkdir /usr/local/tomcat/webapps/ROOT"
+ansible www-edu -m copy -a "src=/root/.jenkins/workspace/www.jfedu.net/target/edu.war dest=/usr/local/tomcat/webapps/ROOT/"
+ansible www-edu -m shell -a  "cd /usr/local/tomcat/webapps/ROOT;source /etc/profile ;\$JAVA_HOME/bin/jar -xf edu.war"
+ansible www-edu -m shell -a  "source /etc/profile;set -m;/usr/local/tomcat/bin/shutdown.sh"
+ansible www-edu -m shell -a  "source /etc/profile;sleep 2;set -m;/usr/local/tomcat/bin/startup.sh"
+ 
+3、	Jenkins持续集成主从配置实战
+1）	单台Jenkins服务器可以满足企业测试环境及生产环境使用Jenkins自动部署+测试平台，如果每天更新发布多个WEB网站，Jenkins需要同时处理很多的任务。
+2）	基于Jenkins分布式，也即多Slave方式可以缓解Jenkins服务器的压力，Jenkins多实例架构如图22-28所示，可以在Windows、Linux、MAC等操作系统上执行Slave。
+ 
+3）	添加从节点方法-Jenkins-WEB平台-系统管理-管理节点-新建节点：
+ 
+ 
+下载Agent.jar文件至远程服务器/tmp目录，如图所示：
+ 
+Launch Command填写如下命令：（提前配置免秘钥或者升级Jenkins SSH Agent插件）
+ssh 47.98.151.187  'source /etc/profile;java -jar /home/jenkins/agent.jar'
+ 
+ 
+ 
+
+
