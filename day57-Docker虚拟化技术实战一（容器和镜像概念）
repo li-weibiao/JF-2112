@@ -1,0 +1,144 @@
+1、Docker虚拟化技术实战一（容器和镜像概念）
+	Docker镜像
+Docker镜像类似Linux ISO镜像文件，底层模板，镜像中存储的各种软件、程序、LIB库、依赖环境等，Docker镜像结构分层（层次）的结构，每一层存储不同的软件和功能，镜像是只读的，不能被修改；
+容器系统：
+基于底层镜像启动，并且在镜像最上层添加一层（容器层）读写层，容器层可以支持修改和读取的，对容器所有的写操作只作用于容器层，容器层需要的软件或者文件可以从镜像层去读取，没有镜像就不会有容器。（只写-容器层）
+	Docker容器
+Docker容器基于Docker镜像运行之后实体，Docker容器的底层是镜像，Docker容器所需文件、软件可以从镜像层中读取，没有镜像，就没有Docker容器，镜像是静止的，容器是活动的（进程和程序的关系）；
+	Docker仓库
+Docker仓库是用于存储Docker镜像文件的地方，仓库分为公共和私有仓库，企业生产环境推荐自建私有仓库（安全、稳定、速度快）；
+2、Docker虚拟化技术实战二（容器和镜像实战）
+1）Docker命令行指令实战：
+#查看Docker镜像；
+docker images
+#删除Docker镜像；(强制删除-f参数)
+docker rmi 6759d91a032b
+#查看运行中的容器；
+docker ps
+#查看运行、停止、关闭的所有容器；
+docker ps -a
+#进入Docker容器系统bash终端；（exit退出即可）
+docker exec -it 4f3a529813ce /bin/bash
+#停止Docker容器；
+docker stop 4f3a529813ce
+#启动Docker容器；
+docker start 4f3a529813ce
+#删除Docker容器；
+Docker rm 4f3a529813ce(-f强制删除运行中的容器)；
+#删除所有的Docker容器；
+for i in `docker ps|awk 'NR>=2 {print $1}'`;do docker rm -f $i ;done
+docker ps -aq|xargs docker rm -f
+docker rm -f `docker ps -aq`
+docker rm -f $(docker ps -aq)
+3、Docker虚拟化技术实战三（1台Nginx均衡2台Tomcat）
+1)	基于一台物理机，部署1台Nginx均衡2台Tomcat，通过访问Host OS的80端口，能够访问Tomcat容器中的测试页面；
+2)	基于Docker引擎启动3个Docker容器，首先下载Nginx和Tomcat镜像，下载的指令如下：
+docker pull docker.io/nginx
+docker pull docker.io/tomcat
+ 
+3)	其中一个为Nginx容器，并且对外映射80:80端口规则，启动Nginx容器并且映射80端口的指令如下：
+docker run -itd -p 80:80 docker.io/nginx:latest
+docker ps -a
+docker inspect 9ac1f1f9cdf4|grep -i ipaddr
+ 
+4)	另外两台为Tomcat容器，启动Tomcat容器（无需映射端口）的指令如下：
+docker run -itd docker.io/tomcat
+docker run -itd docker.io/tomcat
+ 
+5)	查看2台Tomcat容器的IP地址，并且记录IP地址；
+docker inspect `docker ps -a|grep tomcat|awk '{print $1}'`|grep -i ipaddr|grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}"|sort|uniq
+ 
+6)	配置Nginx均衡2台Tomcat，实现负载均衡+反向代理，操作方式如下：
+#进入Nginx容器；
+docker exec -it 9ac1f1f9cdf4 /bin/bash
+#进入Nginx WEB配置文件目录；
+cd /etc/nginx/conf.d/
+#排除#和空行的代码；
+grep -vE "#|^$" default.conf 
+server {
+    listen       80;
+    server_name  localhost;
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+}
+#通过sed或者cat将新内容写入default.conf文件中；
+cat>default.conf<<EOF
+upstream tomcat_web {
+	server 172.17.0.3:8080 weight=100 max_fails=2 fail_timeout=15;
+	server 172.17.0.4:8080 weight=100 max_fails=2 fail_timeout=15;
+}
+server {
+    listen       80;
+    server_name  localhost;
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+		proxy_set_header Host \$host;
+		proxy_pass http://tomcat_web;
+    }
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+}
+EOF
+#修改替换未成功的部分参数指令；
+sed -i 's/default.conf/\t/g' default.conf
+#重启nginx服务即可；
+nginx -t
+nginx -s reload
+ 
+#一台宿主机，启动99个Nginx WEB服务，指令如下：
+for i in `seq 1 99`;do docker run -itd -p 80$i:80 docker.io/nginx;done
+ 
+ 
+4、Docker虚拟化技术实战四（Docker启动CentOS容器）
+1)	从Docker仓库下载CentOS6系统镜像；
+docker pull docker.io/lemonbar/centos6-ssh
+ 
+2)	基于CentOS6系统镜像启动CentOS6.x Docker容器，启动指令如下：（映射宿主机80和6022至容器中：80和22）；
+docker run -itd -p 80:80 -p 6022:22 docker.io/lemonbar/centos6-ssh:latest
+ 
+3)	基于CentOS6.5容器部署各种软件、应用程序，部署方法跟物理机部署方法，完全一样，没有什么区别；
+ 
+4)	Docker虚拟化在生产环境有两种使用方式：
+	基于Docker Engine直接启动应用APP（软件）容器；（管理和使用不方便）
+	基于Docker Engine启动CentOS容器-容器中部署APP软件；（管理和使用方便），生产环境推荐方案；
+5)	Docker宿主机跟容器拷贝资源或者共享资源操作指令：
+#从宿主机拷贝文件至docker容器；
+docker cp zabbix-3.2.6.tar.gz 1ccbd29c12c5:/tmp/
+#从docker容器拷贝文件至宿主机；
+docker cp 1ccbd29c12c5:/tmp/zabbix-3.2.6.tar.gz .
+#将宿主机的/var/www/html目录挂载至docker容器的/usr/share/nginx/html目录，指令如下；
+docker run -itd -v /var/www/html/:/usr/share/nginx/html/ docker.io/nginx
+ 
+5、Docker虚拟化技术实战五（Docker网络）
+1)	默认Docker引擎启动一个新容器时，会给容器分配各种资源（分配各种资源模块）：
+	CPU
+	内存
+	硬盘
+	网络
+2)	Docker虚拟化网络模式四种：
+	Host模式
+Docker引擎启动容器，本来默认方式会分配给容器网络子系统，如果指定--net=host，启动后的容器不会拥有独立的网络系统，跟宿主机公用一个网络子系统，共享宿主机的IP和端口；（宿主机使用了22端口，容器还能否使用22端口呢？）
+#指定容器的网络模式为host模式；
+docker run -itd --net=host --name=none_test docker.io/lemonbar/centos6-ssh 
+ 
+	None模式
+Docker引擎启动容器，会分配给容器网络子系统，但是并不会设置网卡、IP、路由等信息，需要用户自定义去配置和添加，借助pipework工具去实现；
+docker run -itd --net=none --name=none_test docker.io/lemonbar/centos6-ssh
+	Container模式
+Docker引擎启动容器，不会分配给容器网络子系统，共享已经存在的容器的IP和网络空间，跟host模式类似的，host模式是共享宿主机，而Container模式共享容器；
+docker run -itd --net=container:692de87ac76c --name=container_test docker.io/lemonbar/centos6-ssh sleep 999d 
+	Bridge模式（桥接模式）
+
+
+
+
+
