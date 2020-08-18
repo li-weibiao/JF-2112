@@ -1,0 +1,18 @@
+1、编写自动拒绝黑客攻击Linux服务器脚本（思路分析）
+1）	公司现有服务器处于互联网对外开放的状态，而且所有人可以远程登录访问，尤其是22端口目前是对所有人开放的（不能禁止，也没有硬件高防设备等）；
+2）	借助开源的SHELL编程脚本实现将黑客的攻击的IP加入到Linux操作系统黑名单文件中，黑客模拟数以万计的用户IP远程暴力破解Linux服务器，黑客使用暴力破解的工具-读取用户名和密码字典（密码文件）,主要是基于SSH协议，远程登录Linux服务器；
+3）	对于运维人员来讲，尽量减少Linux服务器被攻击，尽可能的通过分析黑客的IP地址，获取黑客的IP信息，将黑客的IP加入黑名单或者实施反攻击；
+4）	被黑客暴力破解攻击的Linux服务器，会打开一个日志文件，专门用于记录黑客的恶行（攻击记录），日志文件名称：secure，日志文件到底记录了黑客的哪些信息呢？
+	记录黑客-客户端攻击的IP地址；
+	黑客攻击使用的用户名信息；
+	黑客攻击的具体的时间信息；
+	黑客攻击的状态（成功or失败）；
+5）	定义一个策略，发现相同客户端IP攻击Linux服务器失败次数超过5次，被记录为黑客恶意IP，对恶意IP进行屏蔽，将其IP加入到Linux黑名单文件：（/etc/hosts.deny、/etc/sysconfig/iptables）；
+6）	通过Grep、AWK、SED、Find工具对黑客IP的信息进行分析和过滤：
+grep "Failed password" /var/log/secure|grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}"|sort |uniq -c|sort -nr|awk '{if(($1>=10)) {print $2}}'
+ 
+grep "Failed password" /var/log/secure|grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}"|sort |uniq -c|sort -nr|awk '{if(($1>=10)) {print $2}}'|sed 's/^/&sshd:/g'
+ 
+grep "Failed password" /var/log/secure|grep -oE "([0-9]{1,3}\.){3}[0-9]{1,3}"|sort |uniq -c|sort -nr|awk '{if(($1>=10)) {print "sshd:"$2}}'
+7）	
+
