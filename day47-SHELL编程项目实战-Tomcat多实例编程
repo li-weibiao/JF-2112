@@ -1,0 +1,17 @@
+1、SHELL编程项目实战-Tomcat多实例编程
+1）Tomcat软件-默认配置文件server.xml监听三个端口：6001、7001、8001，而且tomcat服务启动时，会启动三个端口；
+2）配置Tomcat多实例，保证每个Tomcat的启动的端口不能一样，必须保持不一致；
+3）编写SHELL脚本，SHELL脚本Tomcat多实例脚本功能：
+	支持单个Tomcat服务添加和部署；
+	支持多个Tomcat服务添加和部署；（支持数字）
+	Sh auto_install_tomcat.sh 3 创建3个Tomcat实例，而且端口不能相同；
+	Sh auto_install_tomcat.sh 3 创建3个Tomcat实例，而且不能跟之前的Tomcat重名，端口也不能跟之前Tomcat端口重复；
+	部署Tomcat命令：cp tomcat /usr/local/tomcat_xxx;
+2、SHELL编程开发Nginx虚拟主机管理脚本；（多个网站部署）
+	检测Nginx是否安装，并且测试访问；
+	如果已经安装直接添加虚拟主机；
+	支持单个虚拟主机添加；
+	支持多个虚拟主机添加；
+	支持单个或者多个虚拟主机删除；
+
+
