@@ -1,0 +1,127 @@
+第1章 	nginx location 规则
+Location规则匹配优先级总结如下：
+(location =) > (location 完整路径) > (location ^~ 路径) > (location ~|~* 正则顺序) > (location 部分起始路径) > (location  /)
+	如下为Nginx Location规则案例演示：
+location  = / {
+  [ configuration  L1 ] 
+  #只会匹配/，优先级比Location /低。
+}
+location  = /index.html {
+  [ configuration  L2 ]  
+#只会匹配/index.html，优先级最高。
+}
+location  / {
+  [ configuration L3 ] 
+  #匹配任何请求，因为所有请求都是以"/"开始；
+  #但是更长字符匹配或者正则表达式匹配会优先匹配，优先级最低。
+}
+location = /images/ {
+  [ configuration L4 ] 
+  #匹配任何以/images/开始的请求，并停止匹配其它location；
+}
+必选规则是处理静态文件请求，这是nginx作为http服务器的强项
+# 有两种配置模式，目录匹配或后缀匹配,任选其一或搭配使用
+location ^~ /static/ {
+root /webroot/static/;
+}
+location ~* \.(html|txt|gif|jpg|jpeg)$ { 
+  [ configuration L5] 
+  # 匹配大小写无关的以html、txt、gif、jpg、jpeg结尾的URL文件请求； “\”为转义符号。
+  # 但是所有/images/目录的请求将由 [Configuration L4]处理。
+}
+浏览器发起HTTP Request URI案例与Location规则案例匹配如下：
+	/ ->匹配configuration L3；
+	/index.html匹配configuration L2；
+	/images/匹配configuration L4；
+	/images/logo.png匹配configuration L4；
+	/img/test.jpg匹配configuration L5。
+企业生产环境中无需在Nginx.conf配置文件中同时添加五种规则匹配，如下为企业生产环境Nginx Location部分配置代码：
+location /
+{
+    root /var/www/html/；
+	expires      60d；
+}
+location ~ .*\.(gif|jpg|jpeg|bmp|png|ico|txt|js|css)$
+# $不匹配具体的字符，而是匹配字符串的结尾位置，就是说必须在字符串的结尾匹配到$前面的部分才行，比如：x.gif 能匹配成功而 x.gifa 就不行
+与之类似，^ 匹配字符串开始的位置
+{
+	root /var/www/html/；
+	expires      60d；      
+}
+location ~ .*\.(jsp|php|cgi|do)$
+{
+	root /var/www/html/；
+	proxy_pass http://linux_web；
+    proxy_http_version 1.1；
+    proxy_set_header Connection ""；
+    proxy_set_header Host  $host；
+    proxy_set_header X-Real-IP $remote_addr；
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for；    
+}
+location =/newindex.html
+{
+    root /var/www/newwww/；
+	expires      60d；
+}
+
+添加和配置echo-nginx-module 
+#支持在配置文件中使用echo、sleep、time即exec等类似shell命令
+下载地址 wget https://github.com/openresty/echo-nginx-module/archive/v0.61.tar.gz
+重新预编译和安装  ./configure --add-module=echo-nginx-module-0.61   && make && make install
+
+实际使用建议
+所以实际使用中，个人觉得至少有三个匹配规则定义，如下：
+#直接匹配网站根，通过域名访问网站首页比较频繁，使用这个会加速处理，官网如是说。
+#这里是直接转发给后端应用服务器了，也可以是一个静态首页
+# 第一个必选规则
+location = / {
+    proxy_pass http://tomcat:8080/index
+}
+# 第二个必选规则是处理静态文件请求，这是nginx作为http服务器的强项
+# 有两种配置模式，目录匹配或后缀匹配,任选其一或搭配使用
+location ^~ /static/ {
+    root /webroot/static/;
+}
+location ~* \.(gif|jpg|jpeg|png|css|js|ico)$ {
+    root /webroot/res/;
+}
+#第三个规则就是通用规则，用来转发动态请求到后端应用服务器
+#非静态文件请求就默认是动态请求，自己根据实际把握
+#毕竟目前的一些框架的流行，带.php,.jsp后缀的情况很少了
+location / {
+proxy_pass http://tomcat:8080/
+}
+测试配置
+location = /test.png {
+                echo 'config1';
+        }
+        location /test.png {
+                echo 'config2';
+        }
+        location ^~ /test/ {
+                echo 'config3';
+        }
+        location ~* \.(html|txt|jpg|jpeg|png)$ {
+                #echo 'config4';
+        }
+        location ~  \.(TXT|jpg|jpeg|png)$ {
+               echo 'config5';
+        }
+        #location /
+        #{
+        #proxy_set_header  Host  $host;
+        #proxy_set_header  X-Real-IP  $remote_addr;
+        #proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        #proxy_pass http://jvm_web1;
+        #}
+第2章 	LNMP原理讲解
+多数流行的HTTP server都支持FastCGI，包括Apache、Nginx和lighttpd等。同时，FastCGI也被许多脚本语言支持，其中就有PHP,perl。
+FastCGI是从CGI发展改进而来的。传统CGI接口方式的主要缺点是性能很差，因为每次HTTP服务器遇到动态程序时都需要重新启动脚本解析器来执行解析，然后将结果返回给HTTP服务器。这在处理高并发访问时几乎是不可用的。另外传统的CGI接口方式安全性也很差，现在已经很少使用了 
+FastCGI接口方式采用C/S结构，可以将HTTP服务器和脚本解析服务器（PHP）分开，同时在（PHP）脚本解析服务器上启动一个或者多个脚本解析守护进程php-cgi|php-fpm。当nginx服务器每次遇到动态程序时，可以将其直接交付给FastCGI进程管理器（php-fpm）来执行，然后将得到的结果返回给浏览器。这种方式可以让HTTP服务器专一地处理静态请求或者将动态脚本服务器的结果返回给客户端，这在很大程度上提高了整个应用系统的性能。
+ 
+FastCGI是一个协议，php-fpm实现了这个协议，php-fpm的FastCGI协议需要有进程池，php-fpm实现的FastCGI进程叫php-cgi，所以php-fpm其实是他自身的FastCGI或php-cgi进程管理器
+fastcgi_pass   127.0.0.1:9000;# 指定了fastcgi进程侦听的端口,nginx就是通过这里与php交互的
+       fastcgi_index  index.php;#脚本请求的前缀名
+fastcgi_param  SCRIPT_FILENAME  /usr/local/nginx/html$fastcgi_script_name; #脚本文件请求的路径
+        include        fastcgi_params;
+ 
