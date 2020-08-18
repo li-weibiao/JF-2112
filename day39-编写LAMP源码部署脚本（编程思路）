@@ -1,0 +1,63 @@
+JF2112 VIP班10.08作业
+
+1、	编写LAMP源码部署脚本（编程思路）
+1)	Apache WEB软件；
+	检查Apache安装依赖环境；
+	官网下载Apache稳定版本；
+	解压Apache软件包；
+	预编译+编译参数和功能；
+	Make编译；
+	Make install安装；
+2)	MYSQL数据库软件；
+	检查MYSQL安装依赖环境；
+	官网下载MYSQL稳定版本；
+	解压MYSQL软件包；
+	预编译+编译参数和功能；
+	Make编译；
+	Make install安装；
+	数据库初始化&系统服务添加；
+3)	PHP WEB软件；
+	检查PHP安装依赖环境；
+	官网下载PHP稳定版本；
+	解压PHP软件包；
+	预编译+编译参数和功能+MYSQL+Apache模块支持；
+	Make编译；
+	Make install安装；
+4)	LAMP WEB架构整合；
+	Apache主配置文件添加AddType PHP类型；
+	配置文件中添加ServerName localhost指令；
+	重启Apache、MYSQL数据库服务&浏览器WEB验证；
+2、	编写MYSQL5.7源码部署脚本（编程思路）
+	检查MYSQL安装依赖环境；
+	官网下载MYSQL稳定版本+Boost库；
+	解压MYSQL软件包；
+	预编译+编译参数和功能；
+	Make编译；
+	Make install安装；
+	数据库初始化&系统服务添加；
+3、	编写Vsftpd虚拟用户，任意单个用户添加（编程思路）
+	基于YUM方式部署Vsftpd FTP服务；
+	创建虚拟用户+密码信息文件列表，ftpusers.txt;
+	基于DB_LOAD数据库工具生成vsftpd_login.db库；
+	Chmod加密ftpuser.txt和vsftpd_login.db库文件；
+	创建虚拟用户的映射用户（系统用户）：ftpuser；
+	创建虚拟用户认证模块：/etc/pam.d/vsftpd（配置）；
+	vim /etc/vsftpd/vsftpd.conf添加虚拟用户的支持；
+	创建虚拟用户-主配置文件（设置虚拟用户的权限）；
+	/home/ftpuser/创建以虚拟用户名称命名的文件夹，并且授权ftpuser用户能够访问；
+	重启Vsftpd服务，通过客户端验证虚拟用户的登录情况；
+	实现任意单个用户添加，将虚拟用户设置为$1位置变量；
+4、	SHELL编程IF条件语句实战
+1）	if语句是编程语言（C、JAVA、C++、SHELL）中比较常见的语法，用于对流程或者结果进行判断；
+2）	如果满足某个条件，执行某个动作，如果不满足某个条件（否则），执行另外一个动作；
+3）	掌握IF语句的语法格式：
+if （条件1）;then
+action1；
+else
+	action2；
+fi
+4）	IF语句案例演练一,判断数字大小（()）;
+ 
+5）	IF语句案例演练二,判断字符&数字相等：[ ]；
+ 
+
