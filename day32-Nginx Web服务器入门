@@ -1,0 +1,62 @@
+第1章 	Nginx Web服务器入门
+Nginx相对于Apache优点如下：
+	高并发响应性能非常好，官方Nginx处理静态文件并发5w/s；
+	负载均衡及反向代理性能非常强；
+	系统内存和CPU占用率低；
+	可对后端服务进行健康检查；
+	支持PHP cgi方式和FastCGI方式；
+	可以作为缓存服务器、邮件代理服务器；
+	配置代码简洁且容易上手。
+	静态页面通常指不与数据库发生交互的页面，是一种基于w3c规范的一种网页书写格式，是一种统一协议语言，所以称之为静态网页。静态页面被设计好之后，一般很少去修改，不随着浏览器参数改变而内容改变，需注意的是动态的图片也是属于静态文件。从SEO角度来讲，HTML页面更有利于搜索引擎的爬行和收录。常见的静态页面以.html、.gif、.jpg、.jpeg、.bmp、.png、.ico、.txt、.js、.css等结尾。
+	动态页面通常指与数据库发生交互的页面，内容展示丰富，功能非常强大，实用性广。从SEO角度来讲，搜索引擎很难全面的爬行和收录动态网页，因为动态网页会随着数据库的更新、参数的变更而发生改变，常见的动态页面以.jsp、.php、.do、.asp、.cgi、.apsx等结尾
+
+Nginx的配置和部署
+[root@localhost nginx-1.12.2]# ./configure  --help
+--with-http_ssl_module     如果需要对流量进行加密，可以使用该选项，在URLs中开始部分将会是https（需要OpenSSL库）
+--with-http_realip_module  如果你的Nginx在七层负载均衡器或者是其他设备之后，它们将http头中的客户端IP地址传递，那么你将会需要启用这个模块。在多个客户处于一个IP地址的情况下使用
+   --with-http_addition_module 这个模块作为输出过滤器，使你能够在请求经过一个location前或者后时在该location本身添加内容
+   --with-http_xslt_module    该模块用于处理XML响应转换，基于一个或者多个XSLT格式（需要libxml2和libxslt库）
+   --with-http_image_filter_module  该模块被作为图像过滤器使用，在将图形投递到客户之前进行处理（需要libgd库）
+   --with-http_geoip_module    使用该模块，能够设置各种变量以便在配置文件中区段使用，基于地理位置查找客户端IP地址（需要MaxMfind GeoIP库和相应的预编译数据库文件）
+   --with-http_sub_module      该模块实现了替代过滤，在响应中用一个字符串替代另一个字符串
+   --with-http_dav_module      启用这个模块将激活使用WebDAV的配置指令。注意：这个模块也只在有需要使用的基础上启用，如果配置不正确，它将带来安全问题。
+   --with-http_flv_module      如果需要提供Flash流媒体视频文件，那么该模块将会提供伪流媒体
+   --with-http_mp4_module      这个模块支持H.264/AAC文件伪流媒体
+   --with-http_gzip_module     当被调用的资源没有.gz结尾格式的文件时，如果想支持发送预压缩版本的静态文件，那么使用该模块
+   --with-http_gunzio_module   对应不支持gzip编码的客户，该模块用于为客户解压缩预压缩内容
+   --with-http_random_index_module 如果你想提供从一个目录中随机选择文件的索引文件，那么这个模块需要被激活
+   --with-http_secure_link_module  该模块提供了一个机制，它会将一个哈希值链接到一个URL中，因此，只有那些使用正确的密码能够计算链接
+--with-http_stub_status_module  启用这个模块后会收集Nginx自身的状态信息。输出的状态信息可以使用RRDtool或类似的东西来绘制成图
+	 --with-pcre         启用nginx正则依赖库，主要对nginx配置中正则表达进行支持，例如rewrite模块。
+	
+错误提示：./configure: error: the HTTP rewrite module requires the PCRE library.
+You can either disable the module by using --without-http_rewrite_module
+option, or install the PCRE library into the system, or build the PCRE library
+statically from the source with nginx by using --with-pcre=<path> option.
+yum install pcre-devel –y
+	 --with-pcre         启用nginx正则依赖库，主要对nginx配置中正则表达进行支持，例如rewrite模块。
+
+ither disable the module by using --without-http_gzip_module
+option, or install the zlib library into the system, or build the zlib library
+statically from the source with nginx by using --with-zlib=<path> option.
+yum install zlib-devel –y
+    --with-http_gzip_module     当被调用的资源没有.gz结尾格式的文件时，如果想支持发送预压缩版本的静态文件，那么使用该模块
+
+Nginx 运行原理：
+Nginx由Nginx内核和模块组成，其中内核的设计非常微小和简洁，完成的工作也非常简单，仅仅通过查找配置文件将客户端的请求映射到一个location block，而location是Nginx配置中的一个指令，用于访问的URL匹配，而在这个location中所配置的每个指令将会启动不同的模块去完成相应的工作。
+如果。。。。。。那么。。。。。
+location / {
+            root   html;# 以/usr/local/nginx/为基础的目录
+            index  index.html index.htm;
+        }
+ 
+location = /50x.html {
+            root   html; #以/usr/local/nginx/为基础的目录
+        }
+ 
+返回错误
+404	Not Found	服务器没有该资源，请求的文件找不到；
+ 
+
+
+
