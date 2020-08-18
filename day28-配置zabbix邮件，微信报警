@@ -1,0 +1,73 @@
+第1章 	邮件部署
+zabbix邮件媒介的配置
+ 
+密码是163的邮箱授权码是************
+ 
+ 
+
+配置用户报警媒介
+ 
+
+配置媒介动作及用户人和报警信息
+ 
+ 
+ 
+Zabbix action中的常用变量：
+{HOST.NAME}：主机名
+{HOST.IP}：主机IP
+{TRIGGER.NAME}：报警信息
+{TRIGGER.STATUS}：事件状态，是problem还是ok
+{TRIGGER.NAME}：具体事件，通常写在邮件标题中
+{TRIGGER.SEVERITY}：事件的严重级别
+[EVENT.DATE} {EVENT.TIME}：事件发生时间
+{EVENT.ID}：事件ID
+
+邮件报警
+报警提示说ping不通 10.0.0.7
+ 
+报警信息说10.0.0.5 /boot目录容量低于%20
+ 
+错误信息：Couldn't connect to server: Failed connect to smtp.16.com:25; Connection refused
+解决错误：查看163邮箱的smtp服务器是否配置正常。
+错误信息：Login denied: Authentication failed: 535
+解决错误：认证的账号和密码发生错误，请修改账号密码。
+错误信息： 
+解决办法：错误是使用163授权端口被限制，可以换邮箱或者添加多个收件人邮箱进行测试（126、163、新浪、qq、139）等。
+第2章 	微信报警
+首先获取企业微信和zabbix 关联的工具，在QQ群内可以找到，需要对其进行配置
+（1）	获取微信报警工具
+mkdir  -p  /usr/local/zabbix/alertscripts
+cd  /usr/local/zabbix/alertscripts
+wget http://dl.cactifans.org/tools/zabbix_weixin.x86_64.tar.gz
+tar  zxvf zabbix_weixin.x86_64.tar.gz
+mv  zabbix_weixin/weixin  .
+chmod o+x weixin
+mv zabbix_weixin/weixincfg.json /etc/
+rm -rf zxvf zabbix_weixin.x86_64.tar.gz
+rm -rf zabbix_weixin/
+修改/etc/ weixincfg.json配置文件中corpid、secret、agentid，并测试脚本发送信息，如图13-44（a）、13-44（b）所示：
+cd  /usr/local/zabbix/alertscripts
+./weixin  wuguangke 京峰教育报警测试  Zabbix故障报警
+./weixin  contact   subject   body
+标准信息格式：
+Contact，为你的微信账号，注意不是微信号，不是微信昵称，可以把用户账号设置成微信号或微信昵称，Subject 告警主题，Body 告警详情。
+配置企业微信的链接参数，corpID 是企业的ID, AgentId、Secret是企业微信应用的链接参数。
+ 
+测试企业微信信息
+ 
+（2）	脚本调用设置
+Zabbix_Server端设置脚本执行路径，编辑zabbix_server.conf文件，添加如下内容：
+AlertScriptsPath=/usr/local/zabbix/alertscripts
+配置微信报警媒介
+脚本加入三个参数：{ALERT.SENDTO}、{ALERT.SUBJECT}、{ALERT.MESSAGE}：（接收方{ALERT.SENDTO}、主题{ALERT.SUBJECT}、内容{ALERT.MESSAGE}
+ 
+
+媒介报警原理：（微信）动作的设定和邮箱动作的设定是一致，只有动作配置完成，就可以接收到报警信息，然后报警信息会发给用户和用户群组，用户上配置报警媒介，报警媒介（邮件|微信）会收到报警信息，完成服务器报警提示
+ 
+用户配置报警媒介
+ 
+ 
+触发报警测试收到信息
+ 
+zabbix问题查看，可以通过时间轴来查看报错误的信息
+ 
