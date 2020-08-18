@@ -1,0 +1,45 @@
+1、	MYSQL|Mariadb数据库故障排错
+Job for mariadb.service failed because the control process exited with error code. See "systemctl status mariadb.service" and "journalctl -xe" for details.
+1）	在测试环境、生产环境，应用软件、程序报错，第一时间查看应用软件的日志信息，通过日志获取报错具体信息；
+	通过systemctl status mariadb.service查看详细日志，关注关键词：NOT、NO、Error、Failed、FAILURE、Can’t、Warning、Bad、Timeout、Exited、Invalid等；
+	通过journalctl -xe查看数据库启动报错详细信息，相当于查看内核日志：tail -fn 30 /var/log/messages；
+ 
+	根据如上报错信息，表示/var/log/mariadb目录不存在，手工创建一个目录，命令如下：
+mkdir -p /var/log/mariadb/
+ 
+	根据如上错误提示，表示/var/lib/mysql/数据目录没有初始化，通过初始化命令初始化一下，命令如下：
+mysql_install_db --user=mysql --datadir=/var/lib/mysql/
+ 
+	通过Linux系统内核日志、终端日志无法解决问题，此时要借助应用程序：Mariadb自身的日志来定位；
+ 
+ 
+	根据如上提示，查看Mariadb数据库程序日志信息；
+mkdir -p /var/run/mariadb/
+chown mysql /var/run/mariadb/ -R
+ 
+2、	ELK软件概念和工作原理
+1）	ELK不是一款软件，是由三款软件组成的：ElasticSearch、Logstash、Kibana，对外开源、免费的；
+	ElasticSearch
+ElasticSearch是基于JAVA语言编写的，开源、免费的，用于数据存储，可以作为分布式搜索引擎来使用，可以实现数据内容存储、检索、排序、查询、报表统计、生成等功能；
+	Logstash
+Logstash是基于JAVA语言开发的，开源、免费的，用于客户端服务器采集本地日志内容的，Agent客户端软件，可以采集客户端服务器的各种日志内容：内核日志、系统日志、安全日志、应用程序（Apache、Nginx、MYSQL、Redis、Tomcat）日志等，除了采集日志之外，还可以对日志进行内容过滤或者匹配，并且将日志内容存储到ES服务器；
+	Kibana
+Kibana是Node.js框架语言编写的，开源、免费的，主要是用于展示Logstash和ES的日志数据的，可以提供一套WEB UI界面，方便用户和管理人员对ES的数据进行可视化操作、配置、数据分析、统计（如果没有WEB界面，只能靠命令行操作）；
+	ELK工作方式&工作原理
+客户端安装Logstash日志收集工具，通过logstash收集客户端APP的日志数据，将所有的日志过滤出来，存入Elasticsearch 搜索引擎里，然后通过Kibana GUI在WEB前端展示给用户，用户需要可以进行查看指定的日志内容。同时也可以加入redis通信队列；
+3、	ELK分布式日志平台构建
+1）	ELK三个组件：ElasticSearch、Logstash、Kibana，至少需要2台服务器，3台最好（生产环境），ES和Logstash都是基于JAVA语言开发的，非常占系统Memory内存的；
+2）	2台Linux服务器，ELK分布结构：ES+Kibana一台服务器，Logstash另外一台服务器；
+ 
+3）	部署ES，ES基于JAVA语言开发，二进制软件包，直接解压即可，并且移动到/usr/local/elasticsearch/；
+ES启动2个端口：
+	Port 9200
+ES对外数据存储端口，客户端连接该端口发送和接收数据；
+	Port 9300
+ES对内部分布式集群节点的端口，分布式节点之间通信；
+ 
+/usr/local/elasticsearch/bin/elasticsearch –d
+tail -fn 50 /usr/local/elasticsearch/logs/elasticsearch.log
+netstat -ntlp|grep -E "9200|9300"
+ 
+
