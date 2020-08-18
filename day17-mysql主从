@@ -1,0 +1,76 @@
+1.1 	MySQL集群实战
+MYSQL主从复制集群在中小企业、大型企业中被广泛使用，MYSQL主从复制的目的是实现数据库冗余备份，将Master数据库数据定时同步至Slave库中，一旦Master数据库宕机，可以将WEB应用数据库配置快速切换至Slave数据库，确保WEB应用较高的可用率，如图11-12所示，为MYSQL主从复制结构图：
+ 
+图11-12 MYSQL主从原理架构图
+Mysql主从复制集群至少需要2台数据库服务器，其中一台为Master库，另外一台为Slave库，MYSQL主从数据同步是一个异步复制的过程，要实现复制首先需要在master上开启bin-log日志功能，bin-log日志用于记录在Master库中执行的增、删、修改、更新操作的sql语句，整个过程需要开启3个线程，分别是Master开启IO线程，Slave开启IO线程和SQL线程，具体主从同步原理详解如下：
+	Slave上执行slave start，Slave IO线程会通过在Master创建的授权用户连接上至Master，并请求master从指定的文件和位置之后发送bin-log日志内容；
+	Master接收到来自slave IO线程的请求后，master IO线程根据slave发送的指定bin-log日志position点之后的内容，然后返回给slave的IO线程。
+	返回的信息中除了bin-log日志内容外，还有master最新的binlog文件名以及在binlog中的下一个指定更新position点；
+	Slave IO线程接收到信息后，将接收到的日志内容依次添加到Slave端的relay-log文件的最末端，并将读取到的Master端的 bin-log的文件名和position点记录到master.info文件中，以便在下一次读取的时候能告知master从响应的bin-log文件名及最后一个position点开始发起请求；
+	Slave Sql线程检测到relay-log中内容有更新，会立刻解析relay-log的内容成在Master真实执行时候的那些可执行的SQL语句，将解析的SQL语句并在Slave里执行，执行成功后，Master库与Slave库保持数据一致。
+
+Pos 点代表mysql增删改命令存储MySQL数据库中存储的点的位置，假如写入了一条数据，就会将写入的命令记录到bin-log（二进制日志文件）中，因此会形成一个记录点，记录增删改的命令。
+Mysqlbiglog 可以查看bin-log 文件
+ 
+465点是刚刚主从同步点的位置 ，刚刚创建的库就在同步点以后，从库才能同步master数据库的内容。
+Bin-log 文件是记录master的增加、删除、修改数据库的命令的文件。
+Relay-log 文件是同步master库bin-log文件的一个中继日志的文件，会记录slave请求master过来的bin-log文件，记录到relay-log文件的后面，SQL线程会随时监测relay-log文件的写入情况，监测到有更新的时候，会将其中的命令解析出来，再在slave重新执行一遍。
+Relay-log文件的截图
+ 
+1.2 	LAP+MySQL主从配置实例
+本次实验采用yum方式来试验，本次使用2台机器，分别是
+10.0.0.5 LAP+MySQL主库
+10.0.0.6 MySQL从库
+
+10.0.0.5 LAP+MYSQL主库配置
+yum install mariadb mariadb-devel mariadb-server –y
+yum安装的软件配置文件一般存在于/etc/主配置目录下，日志文件存放在/var yum不能指定版本，配置文件和日志文件规定存放位置，yum 安装的服务默认被加入到系统服务中，代表可以使用service或者systemctl来管理。
+源码安装的软件配置文件主目录可以自己指定，日志文件一般存放在程序主目录内，可以自定义版本，安装和卸载简单，卸载直接清楚进程，删除主目录，升级的需要提前找好对应服务的升级命令和参数，常见的源码管理启动，停止，都在/bin/或者;/sbin/下的二进制执行文件，就是命令。源码安装又分为编译安装和二进制安装，二进制安装就是把解压编译好的主目录压缩包，解压完成后可以直接使用，会发现二进制包容量大。二进制包解压缩之后会出现主配置文件目录和启动目录。
+编译安装使用gcc编译器编译开发写的c语言或者c++语言包，编译包解压缩之后会是未编译的程序代码，一般是(.c .h )结尾的文件。编译的过程中需要指定安装目录、编译参数等等。
+无论安装什么软件或者服务，在修改完配置文件后，一定记得重启，重启，重启。
+Socket = /tmp/mysql.sock #客户端连接本地mysql时使用的文件，也叫通信文件
+Vim /etc/my.cnf
+Log-bin=jingfeng
+Server-id=1
+进入mysql 
+ 
+Replication  slave 代表复制的权限 给slave库
+*.*  代表库的通配符 mysql.user
+Tongbu @ %  代表创建一个用户叫tongbu @ % 所有的IP
+Identified  By “123456” 设置同步用户的密码
+Flush privileges； #刷新权限
+Show master status 查看bin-log文件和pos点
+ 
+
+安装LAP架构
+[root@localhost ~]# yum install httpd httpd-devel php php-devel php-mysql -y
+ 
+Yum安装的lamp架构，PHP和httpd会自动融合，安装php-mysql软件包让php和mysql进行链接。
+在httpd的发布目录创建PHP的测试页。
+[root@localhost html]# cat index.php 
+<?php
+phpinfo();
+?>
+[root@localhost html]# pwd 
+/var/www/html
+Service httpd restart
+ 
+[root@localhost html]# php -v
+PHP 5.4.16 (cli) (built: Apr 12 2018 19:02:01) 
+Copyright (c) 1997-2013 The PHP Group
+Zend Engine v2.4.0, Copyright (c) 1998-2013 Zend Technologies
+
+
+10.0.0.6 MySQL从库
+#修改从库的server-id为22
+Vim /etc/my.cnf
+Server-id=22
+配置链接主库的命令
+change master to master_host='10.0.0.5',master_user='tongbu',master_password='123456',master_log_file='jingfeng.000001',master_log_pos=465;
+master_host 代表主库的IP
+master_user=‘tongbu’ 代表I/O线程传递bin-log文件的用户
+master_log_file='jingfeng.000001' 代表 主库的bin-log文件
+master_log_pos=465 代表bin-log文件的pos点。
+Slave start 
+ 
+
