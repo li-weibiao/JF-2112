@@ -1,0 +1,184 @@
+1.1 	Redis数据备份与恢复
+Redis所有数据都是保存在内存中，Redis数据备份可以定期的通过异步方式保存到磁盘上，该方式称为半持久化模式，如果每一次数据变化都写入aof文件里面，则称为全持久化模式。同时还可以基于Redis主从复制实现Redis备份与恢复。
+1.1.1  半持久化RDB模式
+半持久化RDB模式也是Redis备份默认方式，是通过快照（snapshotting）完成的，当符合在Redis.conf配置文件中设置的条件时Redis会自动将内存中的所有数据进行快照并存储在硬盘上，完成数据备份。
+Redis进行RDB快照的条件由用户在配置文件中自定义，由两个参数构成：时间和改动的键的个数。当在指定的时间内被更改的键的个数大于指定的数值时就会进行快照。在配置文件中已经预置了3个条件：
+save 		900 	1     	  #900秒内有至少1个键被更改则进行快照；
+save 		300 	10    	  #300秒内有至少10个键被更改则进行快照；
+save 		60  	10000  	  #60秒内有至少10000个键被更改则进行快照。
+save        60      10000    #表示每隔60秒如果有10000个key变化就会生成一次快照，并且新的快照会覆盖原来的快照
+默认可以存在多个条件，条件之间是“或”的关系，只要满足其中一个条件，就会进行快照。 如果想要禁用自动快照，只需要将所有的save参数删除即可。Redis默认会将快照文件存储在Redis数据目录，默认文件名为：dump.rdb文件，可以通过配置dir和dbfilename两个参数分别指定快照文件的存储路径和文件名。也可以在Redis命令行执行config  get  dir获取Redis数据保存路径，如图12-15（a）、12-15（b）所示：
+ 图12-15（a） 获取Redis数据目录
+ 图12-15（b） Redis数据目录及dump.rdb文件
+
+Redis Rdb模式恢复
+配置参数如下
+save 900 1
+save 300 10
+save 60 10000
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+dbfilename dump.rdb
+dir /usr/local/redis
+################################ 快照#################################
+#  保存数据到磁盘，格式如下 :
+#   save <seconds> <changes>
+#    指出在多长时间内，有多少次更新操作，就将数据同步到数据文件 rdb 。
+#    相当于条件触发抓取快照，这个可以多个条件配合
+#    比如默认配置文件中的设置，就设置了三个条件
+#   save 900 1  900 秒内至少有 1 个 key 被改变
+#   save 300 10  300 秒内至少有 300 个 key 被改变
+#   save 60 10000  60 秒内至少有 10000 个 key 被改变
+# save 900 1
+# save 300 10
+# save 60 10000
+#  后台存储错误停止写。
+stop-writes-on-bgsave-error yes
+#  存储至本地数据库时（持久化到 rdb 文件）是否压缩数据，默认为 yes
+rdbcompression yes
+# RDB 文件的是否直接偶像 chcksum
+rdbchecksum yes
+#  本地持久化数据库文件名，默认值为 dump.rdb
+dbfilename dump.rdb
+#  工作目录
+#  数据库镜像备份的文件放置的路径。
+#  这里的路径跟文件名要分开配置是因为 redis 在进行备份时，先会将当前数据库的状态写入到一个临时文件中，等备份完成，
+#  再把该该临时文件替换为上面所指定的文件，而这里的临时文件和上面所配置的备份文件都会放在这个指定的路径当中。
+# AOF 文件也会存放在这个目录下面
+#  注意这里必须制定一个目录而不是文件
+dir /usr/local/redis/
+如果需要恢复数据，只需将备份文件 (dump.rdb) 移动到 redis 安装目录并启动服务即可。获取 redis 目录可以使用 CONFIG 命令，如下所示：
+redis 127.0.0.1:6379> CONFIG GET dir
+1) "dir"
+2) "/usr/local/redis "
+恢复数据的时候把Redis主从关闭
+1)	配置脚本测试数据写入master数据
+#!/bin/bash
+REDISCLI="redis-cli -a slavepass -n 1 SET"
+ID=1
+while(($ID<50001))
+do
+  INSTANCE_NAME="i-2-$ID-VM"
+  UUID=`cat /proc/sys/kernel/random/uuid`
+  PRIVATE_IP_ADDRESS=10.`echo "$RANDOM % 255 + 1" | bc`.`echo "$RANDOM % 255 + 1" | bc`.`echo "$RANDOM % 255 + 1" | bc`\
+  CREATED=`date "+%Y-%m-%d %H:%M:%S"`
+  $REDISCLI vm_instance:$ID:instance_name "$INSTANCE_NAME"
+  $REDISCLI vm_instance:$ID:uuid "$UUID"
+  $REDISCLI vm_instance:$ID:private_ip_address "$PRIVATE_IP_ADDRESS"
+  $REDISCLI vm_instance:$ID:created "$CREATED"
+  $REDISCLI vm_instance:$INSTANCE_NAME:id "$ID"
+  ID=$(($ID+1))
+done
+2)	将数据写入到新的实例中
+ 
+Keyspace
+redis是支持多个实例的默认最多16个，可以修改配置文件来支持更多！
+使用INFO命令查看！
+# Keyspace
+db0:keys=1,expires=0,avg_ttl=0
+db0 ：这个可以理解为命名空间。最多支持16个，使用SELECT 去切换
+192.168.0.201:6379> SELECT 1
+OK
+尝试添加一个key-value
+SET db1 hehe
+然后在使用INFO看下
+# Keyspace
+db0:keys=1,expires=0,avg_ttl=0
+db1:keys=1,expires=0,avg_ttl=0
+使用save命令将配置存储在快照中，使用快照进行还原，然后要将快照文件备份到其他目录中
+ 
+cp /usr/local/redis/dump.rdb /tmp/
+#复制备份
+3)	测试删除快照，重新恢复文件
+ 
+重启redis服务，发现数据丢失
+ 
+4)	则需要重新将dump.rdb备份文件复制放到dir主目录中，重启redis数据可以直接进行恢复。
+/usr/local/redis/bin/redis-cli  -p 6379 shutdown
+关闭redis进程之后再进行数据库的备份文件的移动操作
+cp /tmp/dump.rdb  /usr/local/redis/
+#重新启动  nohup /usr/local/redis/bin/redis-server /usr/local/redis/redis.conf &
+ 
+Redis实现快照的过程，Redis使用fork函数复制一份当前进程（父进程）的副本（子进程），父进程继续接收并处理客户端发来的命令，而子进程开始将内存中的数据写入硬盘中的临时文件，当子进程写入完所有数据后会用该临时文件替换旧的RDB文件，至此一次快照操作完成。
+执行fork的时操作系统会使用写时复制（copy-on-write）策略，即fork函数发生的一刻父子进程共享同一内存数据，当父进程要更改其中某片数据时，操作系统会将该片数据复制一份以保证子进程的数据不受影响，所以新的RDB文件存储的是执行fork一刻的内存数据。
+Redis在进行快照的过程中不会修改RDB文件，只有快照结束后才会将旧的文件替换成新的，也就是说任何时候RDB文件都是完整的。这使得我们可以通过定时备份RDB文件来实 现Redis数据库备份。
+RDB文件是经过压缩（可以配置rdbcompression参数以禁用压缩节省CPU占用）的二进制格式，所以占用的空间会小于内存中的数据大小，更加利于传输。除了自动快照，还可以手动发送SAVE和BGSAVE命令让Redis执行快照，两个命令的区别在于，前者是由主进程进行快照操作，会阻塞住其他请求，后者会通过fork子进程进行快照操作。 
+Redis启动后会读取RDB快照文件，将数据从硬盘载入到内存，根据数据量大小与结构和服务器性能不同，通常将一个记录一千万个字符串类型键、大小为1GB的快照文件载入到内存中需花费20～30秒钟。 
+通过RDB方式实现持久化，一旦Redis异常退出，就会丢失最后一次快照以后更改的所有数据。此时需要开发者根据具体的应用场合，通过组合设置自动快照条件的方式来将可能发生的数据损失控制在能够接受的范围。
+1.1.2  全持久化AOF模式
+如果数据很重要无法承受任何损失，可以考虑使用AOF方式进行持久化，默认Redis没有开启AOF(append only file)方式的全持久化模式。
+在启动时Redis会逐个执行AOF文件中的命令来将硬盘中的数据载入到内存中，载入的速度相较RDB会慢一些，开启AOF持久化后每执行一条会更改Redis中的数据的命令，Redis就会将该命令写入硬盘中的AOF文件。AOF文件的保存位置和RDB文件的位置相同，都是通过dir参数设置的，默认的文件名是appendonly.aof，可以通过appendfilename参数修改该名称。
+Redis允许同时开启AOF和RDB，既保证了数据安全又使得进行备份等操作十分容易。此时重新启动Redis后Redis会使用AOF文件来恢复数据，因为AOF方式的持久化可能丢失的数据更少，可以在redis.conf中通过appendonly参数开启Redis AOF全持久化模式：
+appendonly  yes
+appendfilename appendonly.aof
+auto-aof-rewrite-percentage 100 
+auto-aof-rewrite-min-size 64mb
+appendfsync always
+#appendfsync everysec
+#appendfsync no
+Redis AOF持久化参数配置详解：
+appendonly  yes						#开启AOF持久化功能；
+appendfilename appendonly.aof  		    #AOF持久化保存文件名；
+appendfsync always   				    #每次执行写入都会执行同步，最安全也最慢；
+#appendfsync everysec 				    #每秒执行一次同步操作；
+#appendfsync no       				#不主动进行同步操作，而是完全交由操作系统来做，每30秒一次，最快也最不安全；
+auto-aof-rewrite-percentage  100  	    #当AOF文件大小超过上一次重写时的AOF文件大小的百分之多少时会再次进行重写，如果之前没有重写过，则以启动时的AOF文件大小为依据；
+auto-aof-rewrite-min-size    64mb   	#允许重写的最小AOF文件大小配置写入AOF文件后，要求系统刷新硬盘缓存的机制。
+从 aof 中恢复数据
+1 打开以下配置
+appendonly yes
+appendfilename appendonly.aof
+auto-aof-rewrite-percentage 100 
+auto-aof-rewrite-min-size 64mb
+appendfsync always  
+dir /usr/local/redis
+ 
+2 拷贝 AOF 文件到 Redis 的数据目录
+cp appendonly.aof /usr/local/redis
+ 
+3 启动 redis-server
+Nohup  /usr/local/redis/bin/redis-server /usr/local/redis/redis.conf &
+
+1.1.3  Redis主从复制备份
+通过持久化功能，Redis保证了即使在服务器重启的情况下也不会损失（或少量损失）数据。但是由于数据是存储在一台服务器上的，如果这台服务器的硬盘出现故障，也会导致数据丢失。
+为了避免单点故障，我们希望将数据库复制多个副本以部署在不同的服务器上，即使只有一台服务器出现故障其他服务器依然可以继续提供服务，这就要求当一台服务器上的数据库更新后，可以自动将更新的数据同步到其他服务器上，Redis提供了复制（replication）功能可以自动实现同步的过程。通过配置文件在Redis从数据库中配置文件中加入slaveof  master-ip  master-port即可，主数据库无需配置。
+Redis主从复制优点及应用场景， WEB应用程序可以基于主从同步实现读写分离以提高服务器的负载能力。在常见的场景中，读的频率一般比较大，当单机Redis无法应付大量的读请求时，可以通过复制功能建立多个从数据库，主数据库只进行写操作，而从数据库负责读操作，还可以基于LVS+keepalived+Redis对Redis实现均和高可用。
+从数据库持久化持久化通常相对比较耗时，为了提高性能，可以通过复制功能建立一个（或若干个）从数据库，并在从数据库中启用持久化，同时在主数据库禁用持久化。
+当从数据库崩溃时重启后主数据库会自动将数据同步过来，所以无需担心数据丢失。而当主数据库崩溃时，需要在从数据库中使用SLAVEOF NO ONE命令将从数据库提升成主数据库继续服务，并在原来的主数据库启动后使用SLAVE  OF命令将其设置成新的主数据库的从数据库，即可将数据同步回来。
+1.1.4  REDIS 恢复
+当redis宕机后，导致当前数据丢失。需要拿最新备份数据恢复到redis，如果rdb和aof都打开的情况下，要注意一下几点。
+1、拷贝dump.rdb文件到redis 数据文件夹下
+2、启动redis，此时如果redis同时开启了aof生成策略，redis会先加载aof，如果没有则生成一个aof
+3、此时如果get key获取rdb中的备份数据会发现并没有获取到，这是由于redis启动时，基于新的内存重新生成了一个新的rdb文件，覆盖了备份的rdb文件
+4、遇到这种情况应该先把aof生成策略先关闭,即把redis.conf文件中的appendonly 改为 no，然后重启redis
+5、此时发现可以获取备份中的数据了，确认数据恢复后，这个时候要打开aof必须动态的打开，方法是进入客户端后，输入命令config set appendonly yes
+6、确认设置是否成功，config get appendonly，返回yes ,说明已经设置成功，在此确认数据是否恢复，如果已经恢复，再次停止redis
+7、然后修改配置文件，把redis.conf文件中的appendonly 改为yes，然后重启redis.
+8、启动后，再次确认数据是否已经恢复，发现已经恢复。
+1.2 	Zabbix 监控系统入门及部署
+安装的插件介绍：
+yum -y  install  curl  curl-devel  net-snmp net-snmp-devel  perl-DBI  mariadb-devel mysql-devel 
+# net-snmp net-snmp-devel net-snmp是个开源的SNMP实现项目。支持SNMPv1、SNMPv2、SNMPv3，支持基于IPv4和IPv6的SNMP应用程序开发。
+#perl-DBI 激活数据库
+
+ [root@localhost mysql]# mysql -uzabbix -p123456 zabbix <schema.sql 
+[root@localhost mysql]# mysql -uzabbix -p123456 zabbix <images.sql 
+[root@localhost mysql]# mysql -uzabbix -p123456 zabbix <data.sql
+导入的顺序依次是用户结构、图片、数据 
+[root@localhost mysql]# pwd 
+/usr/src/zabbix-3.2.6/database/mysql
+【注意】:导入顺序不能变。
+./configure --prefix=/usr/local/zabbix/ --enable-server --enable-agent --with-mysql --enable-ipv6 --with-net-snmp --with-libcurl
+#加载snmp协议   --with-net-snmp
+#支持不同协议链接不同服务器支持多种协议，http，https，ftp，   --with-libcurl
+[root@localhost php]# pwd 
+/usr/src/zabbix-3.2.6/frontends/php 
+#用来存放网站数据
+cp -a ./*  /usr/local/apache/htdocs/
+错误提示：
+ 
+解决错误：ln -s /usr/local/zabbix/sbin/zabbix_*  /usr/local/sbin/
+ 
+修改zabbix启动文件也可以配置启动进程文件。
+
