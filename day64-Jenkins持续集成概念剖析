@@ -1,0 +1,88 @@
+1、传统手工方式更新企业门户网站
+1）学习Linux技术，后期从事Linux运维岗位，作为运维人员主要的工作职责之一：（门户网站：企业的主要产品展示信息、信息平台、企业对外统一入口网站）
+	负责企业门户网站构建+架构设计；
+	对门户网站进行代码更新、部署管理；
+	对门户网站进行稳定性的维护，故障及时处理；
+2）企业需求，要求更新门户网站：http://vv2.jfedu.net/forum.php 原始的Logo图片，更新为最新的开发人员设计的Logo图片，更新的方法和步骤？
+ 
+3）作为运维人员，找到网站对应的Logo图片所在服务器的具体的位置，将新的Logo图片上传或者拷贝更新即可，从哪里开始去操作呢？
+4）首先通过浏览器访问门户网站，并且找出Logo访问的原始URL地址：（F12、鼠标右键、查看属性）
+http://vv2.jfedu.net/static/image/common/logo.png 
+通过图片访问的URL，可以确认图片服务器是通过vv2.jfedu.net域名-所在的服务器发布的；
+ 
+5）第二步工作，通过其他客户端、机器命令行ping vv2.jfedu.net对应的服务器IP地址，确认服务器的IP地址（VIP）（106.12.133.186）
+ 
+6）通过服务器资产列表信息，找到服务器IP对应的用户名和密码，或者服务器网站是否有FTP服务可以上传更新代码（一般没有），通过XSHELL或者CRT远程登录服务器；
+ 
+7）查找Logo.png图片文件所在的具体的路径，查找的方法有两种：
+	基于Find和Locate工具查找；（不推荐）
+	基于域名对应WEB服务器-主配置文件-虚拟主机-发布目录；
+8）查找域名对应的WEB服务器软件，查找WEB网站是通过什么软件发布的？（确认vv2.jfedu.net是通过Nginx 80服务发布的）
+netstat -tnlp|grep -w 80
+ 
+9）查看80端口所在的进程ID，从而查找Nginx WEB软件网站目录&主配置文件绝对路径；（vv2.jfedu.net对应配置文件domains下）
+#Nginx WEB软件主目录；
+/usr/local/nginx/
+#Nginx WEB软件主配置文件；
+/usr/local/nginx/conf/nginx.conf
+ 
+10）通过以上信息，确认默认网站、虚拟主机的配置文件均在domains虚拟主机目录下；（vv2.jfedu.net基于Nginx负载均衡+反向代理+动静分离）
+ 
+11）通过如上配置+127.0.0.1:80客户端主机，确认vv2.jfedu.net对应的发布目录：
+	/usr/local/nginx/html/vv2.jfedu.net（nginx除了转发和静态文件之外目录）；
+	/usr/local/nginx/html/（静态文件|png结尾图片文件目录）；
+	/var/www/html/（apache发布目录|动态文件路径）；
+12）通过如上发布目录+访问的URL，确认Logo.png最终路径：
+/usr/local/nginx/html/static/image/common/logo.png
+13）如何更新Logo图片呢？通过FTP、RZ、winscp工具上传logo.png图片文件至服务器的临时目录/tmp/`date +%F`下；
+ 
+14）外网门户网站更新，更新之前必须创建备份目录，并且备份源Logo图片文件，备份成功之后，再拷贝新Logo替换旧的Logo图片文件；
+mkdir -p /data/backup/`date +%F`
+cd /data/backup/`date +%F`
+cp /usr/local/nginx/html/static/image/common/logo.png  ./
+ls -l /data/backup/`date +%F`/
+ 
+15）拷贝新的Logo图片文件至源Logo图片位置即可：（静态文件更新，无需重启服务，直接F5刷新浏览器访问）
+cp logo.png /usr/local/nginx/html/static/image/common/
+\cp logo.png /usr/local/nginx/html/static/image/common/
+yes|cp logo.png /usr/local/nginx/html/static/image/common/
+ 
+2、Jenkins持续集成概念剖析
+1）如上为手工方式更新门户网站方法，如果每天更新的门户网站繁多，加重运维人员的工作量，为了解决网站频繁更新、重复更新，引入自动化方案来解决，从而提高运维人员的工作效率；
+2）互联网主流的更新门户网站方法：
+	纯手工更新、部署门户网站；
+	基于SHELL脚本、Rsync、For循环更新；
+	基于Ansible自动化工具批量更新；
+	基于Hudson自动化平台工具；（收费的）
+	基于Jenkins自动化平台工具（免费的，互联网企业广泛采用方案）
+3）构建Jenkins平台可以解放如下人员的双手：
+	开发人员
+对于开发人员来说，只需负责网站代码的编写，不需要手动再对源码进行编译、打包、单元测试等工作，开发人员直接将写好的代码分支存放在SVN、GIT仓库即可。
+	运维人员
+对于运维人员来说，使用Jenkins自动部署，可以减轻人工干预的错误率，同时解放运维人员繁杂的下载代码、上传代码、手动备份、手动更新。
+	测试人员
+对于测试人员来说，可以通过Jenkins进行代码测试、网站功能或者性能测试。
+3、Jenkins持续集成平台部署实战
+1）Jenkins持续集成，持续集成概念？
+持续集成主要是描述业务系统、门户网站能够不断更新需求、更新代码、能够不断的将各个功能结合在一起（集成），满足用户快速访问和高效的体验；
+2）Jenkins是开源、免费的，其前身是Hudson（收费的），基于JAVA语言开发的，运行Jenkins软件所在的服务器底层操作系统必须部署JAVA JDK环境；
+3）因为开发编写的代码，都上传到SVN、GIT仓库，此处需要一台服务器部署SVN或者GIT仓库；此处部署好一台SVN服务器，往SVN上传代码、下载代码、更新代码；（文件服务器、网站版本管理仓库）
+4）从Jenkins服务器，下载Jenkins软件版本，选择稳定版本，选择使用比较广泛的版本：
+http://mirrors.tuna.tsinghua.edu.cn/jenkins/war/2.150/jenkins.war 
+5）部署Tomcat+JDK的环境，部署成功，将Jenkins.war拷贝并且解压至Tomcat发布目录ROOT下即可，重启Tomcat服务，如图所示：
+ 
+6）登录Jenkins WEB平台（用户名和密码），如何去更新PHP门户网站呢？将Discuz门户网站的Logo图片更换为最新的Logo图片（将最新的Logo图片文件|代码，上传到SVN仓库）呢？
+svn://139.224.227.121:8801/edu/vv2
+shareku1
+www.jfedu.netQAZ
+7）Jenkins WEB平台，创建一个任务工程，命名为vv2.jfedu.net，配置为自由风格任务，并且指定SVN仓库地址（设置SVN用户名和密码）；
+mkdir -p /data/backup/`date +%Y%m%d%H%M`
+cd /data/backup/`date +%Y%m%d%H%M`
+cp /usr/local/nginx/html/static/image/common/logo.png  ./
+ls -l /data/backup/`date +%Y%m%d%H%M`
+tail -n 40 /var/log/messages
+\cp /root/.jenkins/jobs/vv2.jfedu.net/workspace/logo.png /usr/local/nginx/html/static/image/common/
+echo "cp /root/.jenkins/jobs/vv2.jfedu.net/workspace/logo.png /usr/local/nginx/html/static/image/common/"
+sleep 30
+8）
+
