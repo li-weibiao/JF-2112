@@ -1,0 +1,97 @@
+1、Keepalived高可用架构概念
+1）学习Linux技术，从事Linux运维工作，最主要的工作职责保证企业门户网站、数据库、业务系统、IT硬件设备等高效稳定的运行，如何才能保障网站、数据库等稳定运行呢？如何才能保证高可用呢？
+2）高可用的概念：不是说网站、业务系统不宕机，是宕机的时间比较短，影响业务比较小，一定时间、范围内，可以运行网站、业务系统有异常（难免的），衡量网站的高可用有一个俗语：全年网站可用率以9个数百分比衡量，例如：99.9%、99.99%、99.999%等；
+3）为了确保WEB架构、业务系统、硬件设备的高效、稳定的运行的话，可以引入高可用方案：
+	基于SHELL脚本实现高可用；
+	基于Keepalived软件实现高可用；（主流的高可用软件）
+	基于Heartbeat软件实现高可用；（最早期使用软件）
+4）Keepalived高可用软件，是一种类似于工作在三（网络层）、四（传输层）、七层（应用层）的交换机制的软件，Keepalived高可用软件两个核心功能：
+	健康检测功能；
+	VRRP冗余功能；
+5）Keepalived监控检测功能检测方案：可以以如下三种方式去检测，如果发现WEB网站、数据库服务器宕机或者异常，可以从服务列表（服务池）移除该服务器，等待服务器恢复以后，Keepalived可以将服务器加入到服务列表（服务池），三种方式检测案例如下：
+	Keepalived可以网络层工作方式，以IP形式去监控客户端（网站、数据库）；
+	Keepalived可以传输层工作方式，以IP+端口形式去监控客户端（网站、数据库）；
+	Keepalived可以应用层工作方式，以HTTP、FTP等协议形式去监控客户端（网站、数据库）；
+6）Keepalived高可用软件模块剖析：
+	Core，是keepalived的核心，负责主进程的启动和维护，全局配置文件的加载解析等 。
+	Check，负责healthchecker(健康检查)，包括了各种健康检查方式，以及对应的配置的解析包括LVS的配置解析；
+	Vrrp，VRRPD子进程，VRRPD子进程就是来实现VRRP协议；
+	Libipfwc，iptables(ipchains)库，配置LVS会用到；
+	Libipvs，虚拟服务集群，配置LVS会使用。
+7）Keepalived可以实现VRRP冗余功能，冗余功能（高可用功能），将2台路由器（服务器）组成冗余集群，同一时刻一台服务器对外提供服务，当一台服务器宕机以后，会自动切换至另外服务器。
+8）VRRP冗余技术剖析：
+	是虚拟路由器冗余技术，严格来讲不仅仅属于Keepalived软件的；
+	基于VRRP技术可以将多台路由器（主机）组成一个虚拟路由器集群；
+	虚拟路由器集群中，根据优先级选举产生：Master和Backup，Master拥有特殊权限：绑定VIP（虚拟IP），同时对外响应用户的请求或者转发用户请求；
+	Master路由器（主机）定时向集群组内发送组播包（组播地址：224.0.0.18），BACKUP接收组播包，一旦接收不到（认为Master宕机），其他BACKUP会根据优先级重新选举Master；
+	在一组虚拟路由器集群中，不管谁是MASTER，对外都是相同的MAC和VIP。
+2、Keepalived高可用架构实战
+1）Keepalived高可用软件应用于生产环境中，至少要准备2台服务器，每台服务器部署相应的软件（Apache、MYSQL、MariaDB、Redis、Nginx、Tomcat、LVS、DRBD），基于Keepalived可以实现2台服务器的冗余，进而服务器上部署软件服务也是冗余关系。
+2）实战Nginx+Keepalived高可用WEB架构，2台服务器部署Nginx WEB服务，同时开启80端口对外访问；
+3）当Nginx WEB服务宕机以后，通过脚本把keepalived进程给stop掉，Keepalived进程挂了，会有什么现象呢？VIP漂移了。
+4）Keepalived双主架构的配置文件：
+! Configuration File for keepalived 
+global_defs { 
+  notification_email { 
+      support@jfedu.net
+ } 
+    notification_email_from wgkgood@163.com 
+    smtp_server 127.0.0.1 
+    smtp_connect_timeout 30 
+    router_id LVS_DEVEL 
+ } 
+vrrp_script chk_nginx { 
+    script  "/data/sh/check_nginx.sh" 
+    interval 2 
+    weight 2 
+} 
+#VIP1 192.168.0.198 
+vrrp_instance VI_1 { 
+     state MASTER 
+     interface ens33 
+     lvs_sync_daemon_inteface ens33 
+     virtual_router_id 151 
+     priority 100 
+     advert_int 5 
+     #nopreempt 
+     authentication { 
+         auth_type  PASS 
+         auth_pass  1111 
+     } 
+     virtual_ipaddress { 
+         192.168.0.198 
+     } 
+     track_script { 
+     chk_nginx 
+    } 
+}
+#VIP2 192.168.0.199
+vrrp_instance VI_2 { 
+     state BACKUP
+     interface ens33 
+     lvs_sync_daemon_inteface ens33 
+     virtual_router_id 152 
+     priority 80 
+     advert_int 5 
+     #nopreempt 
+     authentication { 
+         auth_type  PASS 
+         auth_pass  1111 
+     } 
+     virtual_ipaddress { 
+         192.168.0.199 
+     } 
+     track_script { 
+     chk_nginx 
+    } 
+}
+3、负载均衡软件LVS（Nginx）概念剖析
+1）LVS（Linux Virtual Server），1998年5月国人开发，章文嵩博士对外开放，目前LVS得到互联网广泛的青睐和使用。
+2）LVS负载均衡工作原理：
+用户请求LVS负载均衡器-VIP地址，LVS服务器会根据转发的方式和转发的算法，将用户的请求发往后端集群池中，后端服务器接收请求而且会响应请求，将数据返回给用户，对于用户来讲，看不到后期集群真实情况。
+3）LVS负载均衡转发方式：（IP负载均衡技术实现方法）
+	NAT模式
+	DR模式
+	TUN模式
+4）
+
