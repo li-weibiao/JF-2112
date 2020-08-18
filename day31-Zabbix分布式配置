@@ -1,0 +1,179 @@
+第1章 	Zabbix分布式配置
+Zabbix是一个分布式监控系统，它可以以一个中心点、多个分节点的模式运行，使用Proxy能大大的降低Zabbix Server的压力，Zabbix Proxy可以运行在独立的服务器上，如图13-36所示：
+ 
+图13-36 Zabbix Proxy网络拓扑图
+安装Zabbix Proxy，基于Zabbix-3.2.6.tar.gz软件包，同时需要导入zabbix基本框架库，具体实现方法如下：
+（1）	下载Zabbix软件包，代码如下：
+wget  http://sourceforge.net/projects/zabbix/files/ZABBIX%20Latest%20Stable/3.2.6/zabbix-3.2.6.tar.gz/download 
+
+（2）	Zabbix Proxy上执行如下代码：
+yum -y install curl curl-devel net-snmp net-snmp-devel perl-DBI
+groupadd zabbix ；useradd -g zabbix zabbix；usermod -s /sbin/nologin zabbix
+（3）	Zabbix Proxy端配置
+创建zabbix数据库，执行授权命令：
+create  database  zabbix_proxy  charset=utf8;
+grant all on zabbix_proxy.* to zabbix@localhost identified by '123456';
+flush privileges;
+解压zabbix软件包并将Zabbix基础SQL文件导入数据至Zabbix数据库：
+tar   zxvf  zabbix-3.2.6.tar.gz
+cd   zabbix-3.2.6
+mysql -uzabbix -p123456 zabbix_proxy  <database/mysql/schema.sql
+mysql -uzabbix -p123456 zabbix_proxy  <database/mysql/images.sql
+切换至Zabbix解压目录，执行如下代码，安装Zabbix_server：
+./configure --prefix=/usr/local/zabbix/ --enable-proxy --enable-agent --with-mysql --enable-ipv6 --with-net-snmp --with-libcurl
+make
+make install
+ln -s /usr/local/zabbix/sbin/zabbix_*  /usr/local/sbin/
+Zabbix Proxy安装完毕，cd /usr/local/zabbix/etc/目录，如图13-37所示： 图13-37 Zabbix Proxy安装目录
+（4）	备份Zabbix Proxy配置文件，代码如下：
+cp  zabbix_proxy.conf  zabbix_proxy.conf.bak
+（5）	将zabbix_proxy.conf配置文件中代码设置为如下：
+Server=10.0.0.5
+Hostname=10.0.0.6
+LogFile=/tmp/zabbix_proxy.log
+DBName=zabbix_proxy
+DBUser=zabbix
+DBPassword=123456
+Timeout=4  1-30 
+DBHost=localhost
+LogSlowQueries=3000
+DataSenderFrequency=30 proxy 向server发送数据的时间间隔
+HistoryCacheSize=128M
+CacheSize=128M
+（6）	启动Zabbix Proxy服务即可，启动命令如下：
+/usr/local/zabbix/sbin/zabbix_proxy
+ 
+ 
+（7）	Zabbix客户端安装Agent，同时配置Agent端Server设置为Proxy服务器的IP地址或者主机名，zabbix_agentd.conf配置文件代码：
+LogFile=/tmp/zabbix_agentd.log
+Server=10.0.0.6
+ServerActive=10.0.0.6
+Hostname = 10.0.0.7
+（8）	Zabbix Server WEB端添加Proxy，实现集中管理和分布式添加监控，如图13-38（a）、13-38（b）、13-38（c）所示：
+ 
+图13-38（a） Zabbix Proxy WEB添加
+ 
+图13-38（b） Zabbix Proxy监控客户端
+第2章 	Zabbix配置文件详解
+zabbix 配置内容比较多，我们要分为 9 大块来讲解。分别如下：
+	  主机与组
+不用多数，顾名思义，他是添加主机配置与组配置。
+	  监控项
+需要监控的项目，例如服务器负载可以使一个监控项。系统自带大部分监控项，一些特定的监控项我们可以自
+定义，自定义监控项的方法也会在《zabbix 监控项》这节谈到。
+	  触发器
+什么情况下出发什么事情，称之为触发器。例如：定义如果系统负载大于 10 那么报警，这个东西可以称之为触发器。
+	  事件
+触发器状态变更、Discovery 事件等
+	  可视化配置
+图表配置，讲监控的数据绘制成曲线图。或者在一个屏幕中可以看到某台主机所有监控图表。
+	  模板配置
+自定义监控模板。例如 Template OS Linux
+	  报警配置
+配置报警介质：邮箱、sms 以及什么情况下发送报警通知。
+	  宏变量
+用户自定义变量，很有用的一个功能。
+	  用户与组管理
+Zabbix监控系统组件分为Server、Proxy、Agentd端，对参数的详细了解，能够更加深入理解Zabbix监控功能，及对Zabbix进行调优，如下为三个组件常用参数详解：
+2.1.1  Zabbix_server.conf配置文件参数详解：
+DBHost 					数据库主机地址；
+DBName						数据库名称；
+DBPassword 				数据库密码；
+DBPort						数据库端口，默认为3306；
+DBSocket                默认值：/tmp/mysql.sock   说明：mysql sock 文件路径
+AlertScriptsPath		告警脚本存放路径；
+CacheSize					存储监控数据的缓存；配置缓存，用于存储 host，item，trigger 数据，2.2.3 版本之前最大支持 2G，目前最大支持 8G，一般用不了多少的。
+CacheUpdateFrequency	更新一次缓存时间；多少秒更新一次配置缓存
+DebugLevel				日志级别；取值范围：0-5默认值：3说明: 指定 debug 级别0 - 基本信息1 - critical 信息2 - error 信息3 - warnings 信息4 - 调试日志，日志内容很多，慎重使用5 - 用于调试 web 和 vmware 监控
+LogFile				    设定日志存储位置
+LogFileSize				日志文件大小，超过自动切割；日志文件；取值范围：0-1024     默认值：1     0 表示禁用日志自动 rotation，如果日志达到了限制，并且 rotation 失败，老日志文件将会被清空掉，重新生成一个新日志
+ExternalScripts
+默认值： /usr/local/share/zabbix/externalscripts
+说明： 外部脚本目录
+Fping6Location
+默认值：/usr/sbin/fping6  说明：fping6 路径，不懂 fping 的人可以百度一下，如果 zabbix 非 root 启动，请给 fping6 SUID
+FpingLocation              默认值：/usr/sbin/fping MaxHousekeeperDelete      取值范围： 0-1000000默认值：5000   housekeeping 一次删除的数据不能大于 MaxHousekeeperDelete
+LogSlowQueries				数据库慢查询记录，单位毫秒；取值范围：0-3600000    默认值：0     多慢的数据库查询将会被记录，单位：毫秒，0 表示不记录慢查询。只有在 DebugLevel=3 时，这个配置才有效
+PidFile						PID文件存储位置；
+ProxyConfigFrequency		取值范围：1-604800默认值：3600 
+Proxy被动模式下，Server多少秒同步配置文件至proxy；proxy 
+ProxyDataFrequency			取值范围：1-3600默认值:1  被动模式下，Server间隔多少秒向proxy请求历史数据；
+SenderFrequency           取值范围：5-3600默认值：30  间隔多少秒，再尝试发送为发送的报警
+SourceIP                     出口 IP 地址
+StartDiscoverers			发现规则线程数；取值范围：0-250默认值：1     pre-forked discoverers 的数量，1.8.5 版本以前最大可为 255
+User                          默认值：zabbix启动 zabbix server 的用户，在配置禁止 root 启动，并且当前 shell 用户是 root 得情况下有效。如果当前用户是 ttlsa，那么 zabbix server 的运行用户是ttlsa
+Timeout						连接Agent超时时间；agent，snmp，external check 的超时时间，单位为秒
+TrendCacheSize				历史数据缓存大小；取值范围：128K-2G默认值：4M 
+User 						    Zabbix运行的用户；
+HistoryCacheSize			历史记录缓存大小；用于存储历史记录
+HistoryTextCacheSize      取值范围：128K-2G默认值：16M说明：文本类型历史记录的缓存大小，存储 character, text 、log 历史记录.
+ListenIP						监听本机的IP地址；默认值：0.0.0.0
+说明：监听地址，留空则会在所有的地址上监听，可以监听多个 IP地址，ip 之间使用逗号分隔，例如：127.0.0.1,10.10.0.2
+ListenPort					监听端口；取值范围：1024-32767默认值：10051    说明：监听端口
+LoadModule					模块名称；说明：加载模块，格式: LoadModule=，文件必须在指定的 LoadModulePath 目录下，如果需要加载多个模块，那么写多个即可
+LoadModulePath				模块路径。模块目录，参考上面
+2.1.2  Zabbix_Proxy.conf配置文件参数详解：
+ProxyMode 					Proxy工作模式，默认为主动模式，主动发送数据至Server；
+Server						指定Server端地址；
+ServerPort					Server端PORT；
+Hostname					Proxy端主机名；
+ListenPort  				    Proxy端监听端口；
+LogFile						Proxy代理端日志路径；
+PidFile						PID文件的路径；
+DBHost						Proxy端数据库主机名；
+DBName						Proxy端数据库名称；
+DBUser						Proxy端数据库用户；
+DBPassword					Proxy端数据库密码；
+DBSocket 					Proxy数据库SOCKET路径；
+DBPort						Proxy数据库端口号；
+DataSenderFrequency 		    Proxy向Server发送数据的时间间隔；
+StartPollers 				    Proxy程池数量；
+StartDiscoverers  			    Proxy端自动发现主机的线程数量；取值范围：0-250   默认值：1  pre-forked discoverers 的数量，1.8.5 版本以前最大可为 255
+CacheSize   				    内存缓存配置；取值范围：128K-2G
+默认值：8M   说明：历史记录缓存大小，用于存储历史记
+StartDBSyncers  			    同步数据线程数；取值范围：1-100
+默认值：4   预先 foke DB Syncers 的数量，1.8.5 以前最大值为 64
+HistoryCacheSize 			    历史数据缓存大小；取值范围：128K-2G   默认值：8M   说明：历史记录缓存大小，用于存储历史记录
+LogSlowQueries  			    慢查询日志记录，单位为毫秒；取值范围：0-3600000  默认值：0   多慢的数据库查询将会被记录，单位：毫秒，0 表示不记录慢查询。只有在 DebugLevel=3 时，这个配置才有效。
+Timeout						超时时间。取值范围：1-30  默认值：3
+agent，snmp，external check 的超时时间，单位为秒
+2.1.3  Zabbix_agentd.conf配置文件参数详解：
+EnableRemoteCommands       运行服务端远程至客户端执行命令或者脚本；默认值：0  是否运行 zabbix server 在此服务器上执行远程命令
+0 - 禁止1 - 允许
+AllowRoot                   默认值：0 说明：是否允许使用 root 启动，0:不允许，1:允许，默认情况下她会使用 zabbix 用户来启动 zabbix 进程，
+不推荐使用 root
+HostMetadata                 取值范围：0-255 字符  仅用于主机自动注册功能，如果当前值为定义，那么它的值默认为 HostMetadataItem 的值。这个选项在 2.2.0 之后加入，并且确保支付不能超过限制，以及字符串必须是 UTF8，否则服务器无法启动
+hostnameItem                  默认值:system.hostname设置主机名，只有当 HostMetadata 没设置，她才生效。不支持 UserParameters 、aliases，支持 system.run[]
+LogRemoteCommands             默认值：0   记录原型执行的 shell 命令日志，级别为 warrning     0 – disabled     1 - enabled
+Alias                      key 的别名，例如Alias=ttlsa.userid:vfs.file.regexp[/etc/passwd,^ttlsa:.:([0-9]+),,,,\1]， 或者 ttlsa 的用户 ID。你可以使用 key：vfs.file.regexp[/etc/passwd,^ttlsa:.: ([0-9]+),,,,\1]，也可以使用 ttlsa.userid。备注: 别名不能重复，但是可以有多个 alias 对应同一个 key。
+BufferSend                 取值范围：1-3600默认值：5数据存储在 buffer 中最长多少秒
+Hostname  				    客户端主机名；HostnameItem 配置的值
+主机名，必须唯一，区分大小写。Hostname 必须和 zabbix web 上配置的一致，否则 zabbix 主动监控无法正常工作。为什么呢？因为 agent 拿着这个主机名去问 server，我有配置主动监控项 吗？server 拿着这个主机名去配置里面查询，然后返回信息。支持字符：数字字母、'.'、' '、 '_'、 '-'，不超过 64 个字符
+MaxLinesPerSecond            取值范围：1-1000   默认值：100 处理监控类型为 log 何 eventlog 日志时，agent 每秒最大发送的行数。默认为 100 行
+PidFile                      默认值:/tmp/zabbix_agentd.pid  PID 文件名
+
+ListenIP 				        监听的IP地址；
+ListenPort  			        客户端监听端口；取值范围：1024-32767
+默认值 10050
+LoadModulePath			    模块路径；绝对路径，如上
+LogFile 				        日志文件路径；
+PidFile					     PID文件名；
+Server					         指定Server IP地址；zabbix server 的 ip 地址，多个 ip 使用逗号分隔
+ServerActive  			    Zabbix主动监控server的ip地址；zabbix 主动监控 server 的 ip 地址，使用逗号分隔多 IP，如果注释这个选项，那么当前服务器的主动监控就被禁用了
+SourceIP                    zabbix 对外连接的出口 IP 地址
+UnsafeUserParameters       取值范围：0,1  默认值： 0  允许所有字符的参数传递给用户定义的参数。
+StartAgents	  			    Agent启动进程，如果设置为0，表示禁用被动监控；取值范围：0-100   默认值：3  zabbix 启动之后开启被动监控的进程数量，如果设置为 0，那么 zabbix 被动监控被禁用，并且不会监听相应端口，
+也就是说 10050 端口不会开启。
+Timeout		 			    超时时间	默认值：1-30
+默认值：3  超时时间
+User					        运行Zabbix的用户；
+UserParameter 			    用户自定义key；用户自定义 key，格式: UserParameter=,例如：serParameter=system.test,who|wc -l更多请看：zabbix 自定义用户 key 与参数 User parameters（24）
+BufferSize				    缓冲区大小；取值范围：2-65535  默认值：100   buffer 最大值，如果 buffer 满了，zabbix 将会将检索到的数据发送给 zabbix server 或者 proxy
+DebugLevel				    Zabbix日志级别。取值范围：0-5 默认值：3  指定日志级别
+0 - basic information about starting and stopping of Zabbix processes
+1 - critical 级别
+2 - error 级别
+3 - warnings 级别
+4 - debug 级别
+5 - extended debugging (与级别 4 一样. 只能使用 runtime control 来设置.)
+
