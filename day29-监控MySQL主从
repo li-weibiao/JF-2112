@@ -1,0 +1,160 @@
+第1章 	监控MySQL主从
+监控MySQL主从的脚本
+mysql -uroot -e "show slave status\G"|grep -E "Slave_IO_Running|Slave_SQL_Running"|awk '{print $2}'|grep -c Yes
+
+
+在配置agent参数中添加一行定义KEY参数
+UserParameter=mysql.replication,sh /root/mysql_check.sh
+#mysql.replication  自定义key名字，承载后面脚本执行完成的结果
+#sh /root/mysql_check.sh 执行脚本的路径和名称
+agent端可以配置完成后，需要在server端执行测试
+[root@localhost zabbix]# pwd 
+/usr/local/zabbix
+[root@localhost zabbix]# cd bin/
+[root@localhost bin]# ls 
+zabbix_get  zabbix_sender
+[root@localhost bin]# ./zabbix_get  -s 10.0.0.6 -k mysql.replication
+错误提示：sh: /root/mysql_check.sh: Permission denied
+解决错误：可以在agent端配置参数中添加一个AllowRoot=1，临时运行root执行key值脚本，还可以将脚本移动至非root目录既可
+Zabbix 添加MySQL主从监控项（item）
+ 
+key值，对于zabbix标记的键值，agent端定义的脚本的执行结果，脚本会被用采集想要监控的数据，需要自定义监控的脚本，就在agent端执行相对应脚本就可以返回想要结果。
+mysql.replication 就是在agent端定义的key值，配置在server端上，由server端来监控key值的变化，正确的key为2，假如key值在监控中不等于2，就可以添加动作，然后来触发报警，发送邮箱或者微信等。
+配置触发器将当前的值设置成如果不是2，就会触发报警。
+ 
+配置触发器mysql_check，如下图
+ 
+MYSQL主从监控项创建Graph图像
+ 
+第2章 	MySQL修改字符集
+Zabbix 可以设置中文汉化，如果出现乱码解决办法，如果访问zabbix出现如下历史记录乱码， WEB界面乱码，原因是因为数据库导入前不是UTF-8字符集，需要修改为UTF-8模式，如图13-28所示：
+ 图13-28 数据库原字符集latin1
+MYSQL数据库修改字符集方法，vim /etc/my.cnf在配置段加入如下代码：
+[mysqld]
+character-set-server= utf8
+[client]
+default-character-set = utf8
+[mysql]
+default-character-set = utf8
+备份zabbix数据库，并删除原数据库，重新创建，再导入备份的数据库，修改导入的zabbix.sql文件里面的latin1为utf8，然后再导入到zabbix库，乱码问题解决。
+sed  -i  's/latin1/utf8/g'  zabbix.sql
+修改数据库的字符集命令
+MariaDB [(none)]> alter database zabbix  character set utf8;
+修改表的字符集
+MariaDB [zabbix]> alter table users default character set utf8;
+第3章 	修改zabbix乱码字体
+如果在查看graphs监控图像界面的时候时候出现乱码，如图13-29所示：
+ 
+图13-29 Graphs图像乱码
+从windows下控制面板->字体->选择一种中文字库，例如“楷体”，如图13-30所示：
+查看windos的字体C：\windows\Fonts目录中
+ 
+图13-30 上传Windows简体中文字体
+将字体文件cp至zabbix服务dauntfonts目录下，/var/www/html/zabbix/fonts，并且将STKAITI.TTF重命名为DejaVuSans.ttf，最好刷新Graph图像，乱码问题解决，如图13-31（a）、13-31（b）所示：
+ 
+图13-31（a） 上传Windows简体中文字体
+ 
+图13-31（b） Graph图像乱码问题解决
+第4章 	触发器表达式详解
+触发器中的表达式使用很灵活，我们可以创建一个复杂的逻辑测试监控，触发器表达式形式如下:
+{<server>:<key>.<function>(<parameter>)}<operator><constant>
+{主机：key.函数(参数)}<表达式>
+www.zabbix.com:system.cpu.load[all,avg1].last(0)}>5
+常数，具体的例子，请接着往下走，很简单
+大多数数值functions可以使用秒来作为参数。你可以使用前缀“#”来表示它有不同的含义
+FUNCTION CALL	描述
+sum(600)	600秒内的总和
+sum(#5)	最新5个值的和
+last函数使用不同的参数将会得到不同的值，#2表示倒数第二新的数据。例入从老到最新值为1,2,3,4,5,6,7,8,9,10，last(#2)得到的值为9，last(#9)得到的值为2。last函数必须包含参数。
+AVG，count，last，min和max函数还支持额外的参数，以秒为单位的参数time_shift（时间偏移量）。例如avg(1h,1d)，那么将会获取到昨天的1小时内的平均数据。
+优先级	操作	定义
+1	/	除
+2	*	乘
+3	-	减
+4	+	加
+5	<	小于. 用法如下:
+A<B ⇔ (A<=B-0.000001)
+6	>	大于. 用法如下:
+A>B ⇔ (A>=B+0.000001)
+7	#	不等于.用法如下:
+A#B ⇔ (A<=B-0.000001) | (A>=B+0.000001)
+8	=	等于. T用法如下:
+A=B ⇔ (A>B-0.000001) & (A<B+0.000001)
+9	&	逻辑与
+10	|	逻辑或
+触发器示例
+示例一
+触发器名称：Processor load is too high on www.zabbix.com
+{www.zabbix.com:system.cpu.load[all,avg1].last(0)}>5
+触发器说明：
+www.zabbix.com：host名称
+system.cpu.load[all,avg1]：item值,一分内cpu平均负载值
+last(0)：最新值
+>5：最新值大于5
+如上所示，www.zabbix.com这个主机的监控项，最新的CPU负载值如果大于5，那么表达式会返回true，这样一来触发器状态就改变为“problem”了。
+示例二
+触发名称：www.zabbix.com is overloaded
+www.zabbix.com:system.cpu.load[all,avg1].last(0)}>5|{www.zabbix.com:system.cpu.load[all,avg1].min(10m)}>2
+
+当前cpu负载大于5或者最近10分内的cpu负载大于2，那么表达式将会返回true.
+示例三
+触发器名称：/etc/passwd has been changed
+使用函数 diff():
+{www.zabbix.com:vfs.file.cksum[/etc/passwd].diff(0)}>0
+/etc/passwd最新的checksum与上一次获取到的checksum不同，表达式将会返回true. 我们可以使用同样的方法监控系统重要的配置文件,例如/etc/passwd,/etc/inetd.conf等等。这些zabbix一般都会自带，没带的你自己加上吧。
+示例四
+触发器名称：Someone is downloading a large file from the Internet
+使用函数 min:
+{www.zabbix.com:net.if.in[eth0,bytes].min(5m)}>100K
+当前主机网卡eth0最后5分钟内接收到的流量超过100KB那么触发器表达式将会返回true
+示例五
+触发器名称：Both nodes of clustered SMTP server are down
+{smtp1.zabbix.com:net.tcp.service[smtp].last(0)}=0&{smtp2.zabbix.com:net.tcp.service[smtp].last(0)}=0
+当smtp1.zabbix.com和smtp2.zabbix.com两台主机上的SMTP服务器都离线，表达式将会返回true.
+示例六
+触发器名称：Zabbix agent needs to be upgraded
+使用函数str():
+{zabbix.zabbix.com:agent.version.str("beta8")}=1
+如果当前zabbix agent版本包含beta8（假设当前版本为1.0beta8），这个表达式会返回true.
+示例七
+触发器名称：Server is unreachable
+{zabbix.zabbix.com:icmpping.count(30m,0)}>5
+如上表达式表示最近30分钟zabbix.zabbix.com这个主机超过5次不可到达。
+示例八
+触发器名称：No heartbeats within last 3 minutes
+使用函数 nodata():
+{zabbix.zabbix.com:tick.nodata(3m)}=1
+tick为Zabbix trapper类型，首先我们要定义一个类型为Zabbix trapper，key为tick的item。我们使用zabbix_sender定期发送数据给tick，如果在3分钟内还未收到zabbix_sender发送来的数据，那么表达式返回一个true，与此同时触发器的值变为“PROBLEM”。
+示例九
+触发器名称：CPU activity at night time
+使用函数 time():
+{zabbix:system.cpu.load[all,avg1].min(5m)}>2&{zabbix:system.cpu.load[all,avg1].time(0)}>000000&{zabbix:system.cpu.load[all,avg1].time(0)}<060000
+只有在凌晨0点到6点整，最近5分钟内cpu负载大于2，表达式返回true，触发器的状态变更为“problem”
+示例十
+触发器名称：Check if client local time is in sync with Zabbix server time
+使用函数 fuzzytime():
+{MySQL_DB:system.localtime.fuzzytime(10)}=0
+主机MySQL_DB当前服务器时间如果与zabbix server之间的时间相差10秒以上，表达式返回true，触发器状态改变为“problem”
+示例十一
+触发器名称：Comparing average load today with average load of the same time yesterday (使用 time_shift 时间偏移量参数).
+{server:system.cpu.load.avg(1h)}/{server:system.cpu.load.avg(1h,1d)}>2
+Hysteresis（迟滞,滞后）
+简单的说触发器状态转变为problem需要一个条件，从problem转变回来还需要一个条件才行。一般触发器只需要不满足触发器为problem条件即可恢复。明白了么？不明白就看例子吧。
+有时候触发器需要使用不同的条件来表示不同的状态，举个官网很有趣的例子：机房温度正常稳定为15-20°，当温度超过20°，触发器值为problem，直到温度低于15°才会接触警报，异常会解除。别整这些没用的，我们看实例.
+为了达到这个效果，我们需要使用如下触发器表达式:
+示例1
+触发器名称：Temperature in server room is too high
+({TRIGGER.VALUE}=0&{server:temp.last(0)}>20)|
+ ({TRIGGER.VALUE}=1&{server:temp.last(0)}<15)
+如上有两个小括号，前面一个表示触发异常的条件，后面一个表达式表示解除异常的条件。
+注意：宏变量 {TRIGGER.VALUE}将会返回当前触发器的值
+示例2
+触发器名称：Free disk space is too low
+Problem: 最近5分钟剩余磁盘空间小于10GB。（异常）
+Recovery: 最近10分钟磁盘空间大于40GB。（恢复）
+简单说便是一旦剩余空间小于10G就触发异常，然后接下来剩余空间必须大于40G才能解除这个异常，就算你剩余空间达到了39G（不在报警条件里）那也是没用的，有意思不！
+
+({TRIGGER.VALUE}=0&{server:vfs.fs.size[/,free].max(5m)}<10G) |
+ ({TRIGGER.VALUE}=1&{server:vfs.fs.size[/,free].min(10m)}<40G)
+
+
