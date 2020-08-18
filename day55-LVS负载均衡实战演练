@@ -1,0 +1,30 @@
+1、	LVS负载均衡实战演练
+1）	LVS（Linux Virtual Server）Linux虚拟服务器集群，1998年5年章文嵩博士对外开放的版本，得到互联网企业广泛的使用；
+2）	LVS工作原理？工作流程？
+用户请求LVS服务器的VIP地址，请求到达LVS服务器，LVS服务器根据转发方式和算法，将用户的请求转发到后端服务器（均衡池），后端服务器接收到用户的请求，会进行响应和处理，然后将数据返给用户，对于用户来讲是看不到后端集群真实情况。
+3）	LVS负载均衡转发方式：NAT模式、DR模式、TUN模式，描述一下三种模式的具体工作流程，你们公司用哪种呢？公司推荐使用DR（Direct Router）直连路由模式。
+4）	NAT模式工作原理&特点剖析
+	NAT模式工作原理
+用户请求LVS服务器的VIP地址，LVS服务器收到用户的请求之后呢，将请求报文的目标IP地址修改为后端一台Realserver的IP，端口也会修改为后端相应的端口，然后请请求报文发送给Realserver，后端Relaserver服务器接收请求并且响应请求，Realserver将处理之后的数据返回给LVS服务器，LVS服务器将数据内容返回用户（客户端）；
+	NAT模式特点
+可以隐藏后端服务器的真实IP；
+可以节省IPV4公网IP地址；
+流量进出都要经过LVS服务器，可能成为瓶颈；
+生产环境后端Realserver不建议超过20台（配置内网IP）；
+Realserver服务器的网关IP设置为LVS服务器内网IP；
+5）	DR模式工作原理&特点剖析
+	DR模式工作原理
+用户请求LVS服务器的VIP地址，LVS服务器收到用户的请求之后呢，将请求报文的目标MAC地址修改为后端一台Realserver的MAC，请求的目标IP保持不变（VIP），然后请请求报文发送给Realserver，后端Relaserver服务器接收请求并且响应请求，Realserver将处理之后的数据直接返回给用户，或者通过路由器网关将请求返回用户；
+	DR模式特点
+要求LVS和后端Realserver（100台、1000台）必须物理网段；
+比较浪费公网IP，可以通过其他方式解决（LVS+Realserver部署内网，VIP内网IP，通过前端路由器NAT映射-内网VIP 80）；
+用户请求只需要流入经过LVS，返回数据无需经过LVS；
+转发性能比较高、满足大规模高速访问（后端Realserver无限制）；
+LVS+后端Realserver服务器配置同一个VIP地址，而且后端机器配置在lo网卡；
+只有LVS服务器的VIP能够响应路由器发起ARP广播响应，后端Realserver禁止ARP广播响应；
+arp_ignore=1 #抑制lo网卡回应ARP请求，只回应目标IP（VIP）是本地物理网卡配置上的IP；
+arp_announce=2 #当Realserver接收到请求之后，此时的源IP（VIP），网卡不能出去的，请求回应时，可以通过本机其他的网卡将数据发出，可以忽略源IP地址，尽量匹配跟目标机器能够联通的网卡IP；
+6）	LVS+Keepalived负载均衡+高可用：
+Keepalived实现LVS的高可用；
+Keepalived实现LVS后端机器监控检测；
+
