@@ -1,0 +1,44 @@
+1、	Linux性能优化实战
+1）	作为运维工程师来讲，最主要的工作保障：企业门户网站、业务系统、应用程序、软件高效稳定的运行，密切关注业务系统、操作系统性能，对业务系统、操作系统实施性能优化，使其发挥最大的性能；
+2）	影响Linux服务器、业务网站等性能因素有哪些层面呢？
+	硬件层面
+CPU、内存、硬盘容量、硬盘I/O读写、网卡自身带宽容量等，通常对硬件层面因素的优化主要是考虑增加其配置；
+	软件层面
+Linux系统下各个应用程序：Nginx、Tomcat、MYSQL、Redis、程序代码、网站代码等，对其网站代码、软件的配置文件参数优化、优化软件架构、是否增加集群、分布式结构以扩展软件的本身的性能；
+	系统层面
+选择比较稳定的Linux操作系统发行版、减少不必要的服务、端口、修改Linux内核自身的限制、对Linux内核实施优化（打开端口数、进程数、文件数等）；
+	网络层面
+引入性能比较强硬件网络设备、交换机、路由器、防火墙，增加网络设备的背板带宽、带宽容量、吞吐率、运营商购买带宽容量等；
+3）	Linux系统性能评估标准如表15-1所示：
+影响性能因素	评判标准
+	好	坏	糟糕
+CPU	user% + sys%< 70%	user% + sys%= 85%	user% + sys% >=90%
+内存	Swap In（si）＝0
+Swap Out（so）＝0	Per CPU with 10 page/s	More Swap In & Swap Out
+磁盘	iowait % < 20%	iowait % =35%	iowait % >= 50%
+ 
+#清理Linux目录磁盘空间，通过rm删除了，空间还没有释放，因为删除进程还存在，将删除进程kill，空间即可释放：
+lsof|grep deleted|awk '{print $2}'|xargs kill -9
+ 
+常用系统性能分析命令；
+vmstat、sar、iostat、netstat、free、ps、top、iftop、iotop等；
+常用系统性能组合分析命令；
+top、uptime                      检查系统整体的负载、承受能力；
+vmstat、sar、iostat	、top		检测是否是CPU瓶颈；
+free、vmstat					    检测是否是内存瓶颈；
+iostat、iotop						检测是否是磁盘I/O瓶颈；
+netstat、iftop					    检测是否是网络带宽瓶颈。
+4）	以Linux内核优化为案例，对Linux内核进行优化，使其Linux系统自身发挥最大的性能，突破Linux内核自身的限制，为什么有Linux内核优化概念呢？
+5）	因为Linux内核（操作系统）最初设计的时候，做了很多的限制，限制很多参数、资源使用，为了防止Linux系统资源不被恶意使用、大量的使用而导致资源枯竭而设计内核限制；
+6）	在生产环境中，由于某些软件、应用程序发挥最大的性能，使用Linux内核默认资源显然不够的，要对Linux内核资源进行重新修改和调整，对Linux内核资源进行优化；
+默认Linux内核对每个用户设置了打开文件最大数为1024，对于高并发网站，是远远不够的，需要将默认值调整到更大，调整方法有两种：
+Linux每个用户打开文件最大数临时设置方法，重启服务器该参数无效，命令行终端执行如下命令：
+ulimit   -n  65535
+Linux每个用户打开文件最大数永久设置方法，将如下代码加入内核限制文件/etc/security/limits.conf的末尾：
+* 	soft 	noproc			65535
+* 	hard 	noproc			65535
+* 	soft 	nofile			65535
+* 	hard 	nofile			65535
+如上设置为对每个用户分别设置nofile、noproc最大数，如果需要对Linux整个系统设置文件最大数限制，需要修改/proc/sys/fs/file-max中的值，该值为Linux总文件打开数，例如设置为：echo 3865161233 >/proc/sys/fs/file-max。
+
+
