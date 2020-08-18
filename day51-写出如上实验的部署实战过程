@@ -1,0 +1,47 @@
+1、JF2112 VIP班11.01作业
+1）模拟4台Linux服务器，2台Nginx+2台LAP（发布两个网站WordPress+Discuz）+2台MYSQL（主从，可以共用），构建Nginx均衡2台LAMP架构，Nginx设置两个Server虚拟主机，分别访问WordPress网站和Discuz网站，并且画出架构图，架构图要体现两个网站；
+ 
+ 2）写出如上实验的部署实战过程，并预习Nginx动静分离&Location优先级配置；
+Nginx Rewrite以下配置均配置在nginx.conf或者vhosts.conf中，企业中常用的Nginx Rewrite案例如下：
+1.	将jfedu.net跳转至www.jfedu.net。
+if ($host = 'jfedu.net' ) {
+        rewrite ^/(.*)$ http://www.jfedu.net/$1  permanent；
+}
+2.	访问www.jfedu.net跳转www.test.com/new.index.html。
+rewrite   ^/$  http://www.test.com/index01.html  permanent；
+3.	访问/jfedu/test01/跳转至/newindex.html，浏览器地址不变。
+rewrite   ^/jfedu/test01/$     /newindex.html     last；
+4.	多域名跳转到www.jfedu.net。
+if ($host != ‘www.jfedu.net’ ) {
+rewrite ^/(.*)$  http://www.jfedu.net/$1  permanent；
+}
+5.	访问文件和目录不存在跳转至index.php。
+if ( ! -e $request_filename )
+{
+rewrite  ^/(.*)$  /index.php  last；
+}
+6.	目录对换 /xxxx/123456  ====>  /xxxx?id=123456。
+rewrite    ^/(.+)/(\d+)      /$1?id=$2       last；
+7.	判断浏览器User Agent跳转。
+if( $http_user_agent  ~ MSIE)
+{
+rewrite ^(.*)$ /ie/$1 break；
+}
+8.	禁止访问以.sh,.flv,.mp3为文件后缀名的文件。
+location ~ .*\.(sh|flv|mp3)$
+{
+	return 403；
+}  
+9.	将移动用户访问跳转至移动端。
+if ( $http_user_agent ~* "(Android)|(iPhone)|(Mobile)|(WAP)|(UCWEB)" )
+{
+rewrite ^/$      http://m.jfedu.net/       permanent；
+}
+10.	匹配URL访问字符串跳转。
+if ($args ~* tid=13){
+ return 404；
+}
+11.	访问/10690/jfedu/123跳转至/index.php?tid/10690/items=123，[0-9]表示任意一个数字，+表示多个，(.+)表示任何多个字符。
+rewrite   ^/([0-9]+)/jfedu/(.+)$     /index.php?tid/$1/items=$2     last;
+
+
