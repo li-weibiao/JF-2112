@@ -1,0 +1,31 @@
+1、	Ansible自动化运维软件概念和原理
+1）	Ansible是什么？概念剖析？
+Ansible是一款基于Python语言开发的自动化运维配置管理工具，主要是用于管理Unix/Linux操作系统配置、代码、变革操作，去中心化管理，客户端无需部署Agent插件即可管理；
+2）	Ansible的工作原理？
+Ansible分为控制端和被控端，主要是基于SSH协议去管理客户端，被控端是无需安装Agent插件的，Ansible会读取控制端hosts文件，根据文件中定义IP列表信息，调取本地的各个模块对被控端机器实现批量、并发的配置管理和维护，如果任务比较复杂可以写成PlayBook剧本进行分发管理；
+3）	Ansible自动化运维常见模块；
+	Command，默认模块，主要是用于远程命令执行；
+	COPY，文件拷贝模块，主要用于文件或者目录的远程拷贝；
+	SHELL，命令模块，主要是用于远程执行SHELL（BASH）指令；
+	YUM，软件管理模块，主要是用于远程部署、安装、卸载软件；
+	
+4）	基于Ansible批量修改Docker云主机的密码，操作指令如下：
+ansible docker -m shell -a "echo 1|passwd --stdin root"
+ 
+5）	基于Ansible批量修改客户端的密码（执行脚本方式，脚本提前拷贝到客户端），并且将密码信息打印至屏幕终端；
+#脚本代码如下：
+cat change_password.sh 
+#!/bin/bash
+echo $$!@QAZ$1|passwd --stdin root
+echo "`hostname -I` root $$!@QAZ$1"
+#执行的命令如下：
+ansible 192.168.0.2 -m shell -a "/bin/bash /tmp/change_password.sh 321"
+ 
+6）	基于synchronize模块，将源目录同步至目标目录（增量同步）：
+ansible 192.168.0.2 -m synchronize -a 'src=/tmp/ dest=/tmp/'
+7）	基于synchronize模块，将源目录同步至目标目录（完全同步）：
+ansible 192.168.0.2 -m synchronize -a 'src=/tmp/ dest=/tmp/ delete=yes'
+ 
+8）	
+
+
