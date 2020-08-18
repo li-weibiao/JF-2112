@@ -1,0 +1,40 @@
+1、	Tomcat WEB容器企业实战
+1）	Tomcat、JAVA、JDK、JRE、JVM、JSP概念的区别，详解如下：
+	Tomcat
+基于JAVA语言开发JAVA程序，WEB容器（服务器）；
+	JAVA
+主流开发语言，跟PHP、ASP、HTML类似网站设计语言；
+	JDK
+JDK是JAVA语言开发的SDK环境，包括：JAVA工具+JRE运行时环境；
+	JRE
+JRE是JAVA运行时的环境，主要用于运行JAVA程序、代码，JRE（JVM+JAVA类和库）；
+	JVM
+JVM是JAVA虚拟机，是虚拟出来计算机，包括CPU指令、内存堆等资源，主要是用于运行JAVA字节码（JAVA程序）；
+	JSP
+JSP是JAVA Server Pages（JAVA服务页面），基于JAVA语言开发的动态网页，网页文件命名以.jsp结尾，例如:index.jsp、about.jsp；
+2）	Tomcat默认配置文件server.xml，内容如下：
+<?xml version='1.0' encoding='utf-8'?>
+<Server port="8005" shutdown="SHUTDOWN">
+  <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
+  <Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on" />
+  <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener" />
+  <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener" />
+  <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener" />
+  <Service name="Catalina">
+    <Connector port="8080" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+    <Connector port="8009" protocol="AJP/1.3" redirectPort="8443" />
+    <Engine name="Catalina" defaultHost="localhost">
+      <Host name="localhost"  appBase="webapps"
+            unpackWARs="true" autoDeploy="true">
+
+        <Valve className="org.apache.catalina.valves.AccessLogValve" directory="logs"
+               prefix="localhost_access_log" suffix=".txt"
+               pattern="%h %l %u %t &quot;%r&quot; %s %b" />
+      </Host>
+    </Engine>
+  </Service>
+</Server>
+
+3）	
