@@ -1,0 +1,104 @@
+1.1 	Zabbix 监控系统入门及部署
+安装的插件介绍：
+yum -y  install  curl  curl-devel  net-snmp net-snmp-devel  perl-DBI  mariadb-devel mysql-devel 
+# net-snmp net-snmp-devel net-snmp是个开源的SNMP实现项目。支持SNMPv1、SNMPv2、SNMPv3，支持基于IPv4和IPv6的SNMP应用程序开发。
+#perl-DBI 激活数据库
+
+ [root@localhost mysql]# mysql -uzabbix -p123456 zabbix <schema.sql 
+[root@localhost mysql]# mysql -uzabbix -p123456 zabbix <images.sql 
+[root@localhost mysql]# mysql -uzabbix -p123456 zabbix <data.sql
+导入的顺序依次是用户结构、图片、数据 
+[root@localhost mysql]# pwd 
+/usr/src/zabbix-3.2.6/database/mysql
+【注意】:导入顺序不能变。
+./configure --prefix=/usr/local/zabbix/ --enable-server --enable-agent --with-mysql --enable-ipv6 --with-net-snmp --with-libcurl
+#加载snmp协议   --with-net-snmp
+#支持不同协议链接不同服务器支持多种协议，http，https，ftp，   --with-libcurl
+[root@localhost php]# pwd 
+/usr/src/zabbix-3.2.6/frontends/php 
+#用来存放网站数据
+cp -a ./*  /usr/local/apache/htdocs/
+错误提示：
+ 
+解决错误：ln -s /usr/local/zabbix/sbin/zabbix_*  /usr/local/sbin/
+ 
+修改zabbix启动文件也可以配置启动进程文件。
+
+1.2 	Zabbix 监控系统入门及部署
+zabbix监控的完整的流程：
+1.	Zabbix监控完整流程包括：Agentd安装在被监控的主机上，Agent负责定期收集客户端本地各项数据，并发送到Zabbix Server端，Zabbix Server收到数据，将数据存储到数据库中，用户基于Zabbix WEB可以看到数据在前端展现图像。
+2.	当Zabbix监控某个具体的项目，该项目会设置一个触发器阀值，当被监控的指标超过该触发器设定的阀值，会进行一些必要的动作，动作包括：邮件、微信报警或者执行命令等操作。
+3.	模板文件---触发器------动作
+ZABBIX的主被动模式
+1.Zabbix主动模式：Agent主动请求server获取主动的监控项列表，并主动将监控项内需要检测的数据提交给server/proxy，Zabbix agent首先向ServerActive配置的IP请求获取active items（模板），获取并提交active items数据值server或者proxy；
+2.Zabbix被动模式：Server向agent请求获取监控项的数据，agent返回数据，Server打开一个TCP连接，Server发送请求agent.ping，Agent接收到请求并且响应，Server处理接收到的数据。
+1.3 	部署排错记录
+1.错误提示：
+configure: error: xml2-config not found. Please check your libxml2 installation.
+解决错误：yum install libxml2 libxml2-devel –y 
+2.错误提示
+configure: error: Invalid Net-SNMP directory - unable to find net-snmp-config
+解决错误：
+yum install net-snmp net-snmp-devel -y 
+3.错误提示
+checking for curl-config... no
+configure: error: Curl library not found
+  解决错误：缺少curl 插件，yum install curl curl-devel –y
+     4.错误提示
+     
+缺少 gd-png 、gd-jpeg、gd-freetype、sockets、bcmath、mbstring登录模块
+解决错误：重新编译和安装php
+./configure --prefix=/usr/local/php5/ --with-config-file-path=/usr/local/php5/etc --with-apxs2=/usr/local/apache/bin/apxs  --with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  --with-apxs2=/usr/local/apache/bin/apxs  --enable-cli --with-gd --enable-bcmath --enable-mbstring --enable-sockets --with-freetype-dir=/usr/local/freetype/ --with-png-dir=/usr/local/libpng/ --with-jpeg-dir=/usr/local/jpeg8/ --with-zlib-dir=/usr/local/zlib/ --with-zlib --with-gettext
+mysqlnd 是PHP链接mysql驱动的代码，支持php和mysql的链接
+--with-apxs2=/usr/local/apache/bin/apxs  支持和apache链接模块，触发apache的命令进行链接，-apxs2是apache2.0的版本，-apxs是apache1.0的版本
+--with-gd              打开gd库的支持
+--with-freetype-dir    打开对freetype字体库的支持
+--enable-bcmath        打开图片大小调整,用到zabbix监控的时候用到了这个模块
+--enable-mbstring      多字节，字符串的支持
+--enable-sockets       打开 sockets 支持
+--with-jpeg-dir        打开对jpeg图片的支持
+--with-png-dir         打开对png图片的支持
+--with-zlib-dir        打开zlib库的支持
+下载和安装以下软件包
+freetype-2.6.2.tar.bz2
+tar xjf freetype-2.6.2.tar.bz2
+./configure  --prefix=/usr/local/freetype && make -j6 && make -j6 install
+libpng-1.6.35.tar.gz
+tar -xzf libpng-1.6.35.tar.gz
+./configure --prefix=/usr/local/libpng && make -j6 && make -j6 install
+jpegsrc.v9c.tar.gz
+tar -xzf jpegsrc.v9c.tar.gz
+./configure  --prefix=/usr/local/jpeg && make -j6 && make -j6 install
+zlib-1.2.11.tar.gz
+tar -xzf zlib-1.2.11.tar.gz
+./configure --prefix=/usr/local/zlib && make -j6 && make -j6 install
+最终编译命令
+./configure --prefix=/usr/local/php5/ --with-config-file-path=/usr/local/php5/etc --with-apxs2=/usr/local/apache/bin/apxs  --with-mysql=mysqlnd   --with-mysqli=mysqlnd   --with-pdo-mysql=mysqlnd  --with-apxs2=/usr/local/apache/bin/apxs  --enable-cli --with-gd --enable-bcmath --enable-mbstring --enable-sockets --with-freetype-dir=/usr/local/freetype/ --with-png-dir=/usr/local/libpng/ --with-jpeg-dir=/usr/local/jpeg/ --with-zlib-dir=/usr/local/zlib/ --with-zlib --with-gettext && make -j6 && make -j6 install
+
+5．错误提示：
+ 
+解决错误：PHP的配置文件不符合zabbix的要求
+查找php.ini 的文件位置，可以通过测试页来查看php的配置文件目录的位置，复制php.ini文件到PHP主配置目录
+cp php.ini-production  /usr/local/php5/etc/php.ini
+strace /usr/local/php5/bin/php -i 2>1.log也可以用这个命令查看php.ini位置，vim打开1.log可以用？php.ini 搜索
+配置php.ini问题
+sed   -i '/post_max_size/s/8/16/g;/max_execution_time/s/30/300/g;/max_input_time/s/60/300/g;s/\;date.timezone.*/date.timezone \= PRC/g;s/\;always_populate_raw_post_data/always_populate_raw_post_data/g'  php.ini
+max_execution_time = 300 #最大执行时间，页面等待时间
+memory_limit = 128M #单个脚本可调用内存大小
+post_max_size = 16M #上传文件大小上限
+upload_max_filesize = 2M #默认上传文件大小就是2M
+max_input_time = 300 最大上传文件时间
+date.timezone = PRC 设置时间是中国时区
+
+6.错误提示：
+ 
+解决错误：下载配置文件存放到Linux系统中，网站数据目录下的vim /usr/local/apache/htdocs/conf/zabbix.conf.php，重新启动apache
+
+7.错误提示:
+ 
+检查发现是MySQL数据库sock文件位置指定错误
+ 
+解决错误：
+通过链接mysql.sock文件可以解决错误，准确配置sock文件的错误。
+ 
+
