@@ -1,0 +1,113 @@
+1、	剖析虚拟化技术概念和原理
+1）	虚拟化技术是目前比较火爆的IT主流技术之一，跟云计算、大数据被称为IT技术三甲，虚拟化技术主要是为了解决IT设备资源而产生的；
+2）	虚拟化将物理的资源转变为逻辑上可以管理的资源，以打破物理结构之间壁垒，让计算元件运行在虚拟的基础上，而不是真实物理设备上；
+3）	虚拟化的底层是硬件服务器，通过虚拟化技术可以将硬件资源虚拟生成N台虚拟机，应用程序、软件服务（Apache、MYSQL、PHP、Nginx、Tomcat）运行在虚拟机上，而不是直接运行在物理机设备上；
+4）	虚拟化技术核心目标，为了最大化的利用高配物理机的资源，提高物理设备资源的利用率，淘汰老、旧的服务器，对老、旧的服务器资源进行重组重用；
+5）	通常来讲的，硬件服务器（硬件设备）不能直接进行虚拟化的，需要借助虚拟化的软件（VMM-Virtual Machine Monitor）去实现，虚拟化技术分层结构如下：
+ 
+6）	从上图得知，完整的虚拟化平台，包括以下几个组件：
+（VMM：VMware workstation）
+	底层硬件服务器；
+	宿主机操作系统（OS）；
+	Virtual Machine Monitor（VMM）；
+	虚拟机操作系统（OS）；
+	应用程序、软件服务（Nginx）；
+7）	主流的企业级虚拟化技术（VMM）方案，有哪些呢？
+	XEN
+	Hyper-V
+	VMware ESXI（比较多，部署简单、管理方便）
+	KVM （相对比较多，前几年比较火爆）
+	Docker（目前使用最多虚拟化技术）
+8）	企业需求，现在部署100个worker服务，要求worker服务独立部署，独立访问，现在有如下解决方案：
+	采购100台标配硬件服务器，每台服务器部署一个worker服务；
+a)	2U单台2万一台，200万硬件成本；
+b)	42U标准机柜，12台服务器（9组）；
+c)	上架、网线走线（2根网线）、耗费人力；
+d)	100台服务器耗电：单台服务器750wx2，电费；
+e)	后期100台服务器硬件维护、硬盘损坏等；
+f)	需要防火墙、路由器、交换机（48口x3）；
+	采购10台高配硬件服务器，每台服务器虚拟10台虚拟机（同标配服务器配置），每台虚拟机部署1个worker服务；
+a）	硬件成本，2U单台10万，10台=100万；
+b）	防火墙、路由器、机柜、交换机（1台）；
+c）	布线、网络、安装系统、上架比较简单、轻松；
+2、	剖析Docker虚拟化技术概念和原理
+1）	Docker虚拟化是虚拟化技术解决方案中的一种，轻量级、高性能的虚拟化技术，是目前互联网使用最广泛的虚拟化技术；
+2）	最早码头上，有很多的工人搬运货物，将散落货物搬到货轮上，自从集装箱出现以后，码头上工人看不见了，货物放哪里去了呢？货物统一打包到集装箱里面了，集装箱跟集装箱相互隔离的，互不影响；
+3）	Docker虚拟化技术的产物Docker容器（虚拟机|服务程序），容器技术类似集装箱机制，容器中存放了开发编写的各种软件、程序、依赖包、库文件等，容器和容器之间相互隔离的，互不影响，可以基于Docker容器技术实现虚拟化；
+4）	传统虚拟化和Docker虚拟化分层结构图如下：
+ 
+ 
+5）	传统虚拟化和Docker虚拟化如图对比特点如下：
+	传统虚拟化-Server-Host OS-VMM（虚拟化软件）-Guest OS-Nginx服务；
+	Docker虚拟化-Server-Host OS-VMM（虚拟化软件）-Nginx服务（Nginx容器）；
+6）	Docker虚拟化采用集装箱机制，Docker虚拟化技术跟货轮信息举例类比：
+	Docker容器（软件、库文件、服务）-集装箱（货物、物品）；
+	Docker容器-集装箱；
+	Docker Engine-大货轮（船）；
+	HOST OS（硬件设备）-大海；
+
+3、Docker虚拟化平台实战
+1）	Docker官网要求部署Docker引擎（虚拟化软件）的底层Host OS的Linux系统内核版本3.8+，最早期Windows操作系统不支持Docker虚拟化部署，新版的Windows系统可以支持Docker；
+2）	Docker虚拟化建议部署至Linux操作系统平台（稳定、高效、开源、免费的），生产环境推荐Linux内核版本3.10+，对应的Linux操作系统发行版：RHEL7.x和CentOS7.x；
+3）	基于CentOS6.x（6.5+）部署Docker引擎服务，指令如下：
+#YUM安装Docker引擎服务；
+yum install docker-io lxc cgroup device-mapper* -y
+#查看Docker软件是否安装；
+rpm -qa|grep docker
+#启动Docker引擎服务；
+service docker restart
+#查看Docker引擎服务进程；
+ps -ef|grep docker
+4）	基于CentOS7.x（7.0+）部署Docker引擎服务，指令如下：
+#YUM安装Docker引擎服务；
+yum install docker* -y
+#查看Docker软件是否安装；
+rpm -qa|grep docker
+#启动Docker引擎服务；
+service docker restart
+systemctl restart docker.service
+#查看Docker引擎服务进程；
+ps -ef|grep docker
+5）	如上步骤Docker引擎服务配置完毕，并且启动完成，如图所示：
+ 
+6）	Docker虚拟化属于C/S（Client/Server）模式，Server-Engine服务，Client-Docker命令工具，查看docker客户端和服务端版本号：docker version;
+ 
+7）	Docker虚拟化技术实施之前，了解三个概念：Docker镜像、Docker容器、Docker仓库；
+	Docker镜像
+Docker镜像类似Linux ISO镜像文件，底层模板，镜像中存储的各种软件、程序、LIB库、依赖环境等，Docker镜像结构分层（层次）的结构，每一层存储不同的软件和功能，镜像是只读的，不能被修改；
+	Docker容器
+Docker容器基于Docker镜像运行之后实体，Docker容器的底层是镜像，Docker容器所需文件、软件可以从镜像层中读取，没有镜像，就没有Docker容器，镜像是静止的，容器是活动的（进程和程序的关系）；
+	Docker仓库
+Docker仓库是用于存储Docker镜像文件的地方，仓库分为公共和私有仓库，企业生产环境推荐自建私有仓库（安全、稳定、速度快）；
+8）	如果通过Docker引擎运行Docker容器，首先从公共仓库下载Docker镜像，基于Docker镜像再启动容器（默认Docker引擎从Docker国外官网下载镜像文件）；
+#查看本地服务器的镜像列表；（从远程仓库下载的）
+docker images
+#从docker官网仓库搜索tomcat|nginx|redis镜像；
+docker search tomcat
+docker search nginx
+docker search redis
+#从公共仓库下载tomcat镜像；
+docker pull docker.io/tomcat
+docker pull docker.io/nginx
+docker pull docker.io/redis
+ 
+#查看已经下载docker镜像；
+ 
+#基于Docker镜像启动Tomcat容器（-i interactive交互、-t tty终端、-d daemon后台运行）；
+docker run -itd  docker.io/tomcat:latest
+#查看Docker tomcat容器的运行状态；
+docker ps
+ 
+#查看Docker tomcat容器的IP地址；
+docker inspect 0499058becea |grep -i ipaddr
+ 
+#如何访问创建Tomcat容器（Tomcat软件服务，监听8080端口）；
+wget 172.17.0.2:8080
+ 
+#将宿主机系统的8080端口映射到容器的8080端口；（第一个端口宿主机监听的，第二个端口是容器内部服务端口）
+docker run -p 8080:8080 -itd docker.io/tomcat:latest
+ 
+http://47.98.151.187:8080/ 
+ 
+
+
