@@ -1,0 +1,114 @@
+1、Linux软件服务学习技巧和步骤（Nginx）
+1）掌握软件服务的应用场景、功能和需求，能够给企业带来什么好处？Nginx：WEB服务器软件、高性能、轻量级，满足企业高并发的WEB网站访问;
+2）掌握软件服务的工作原理，软件是如何运行的，工作流程是什么？Nginx是基于C语言开发的，由Core内核和模块组成，其中内核的设计非常的微小，主要完成用户请求到来时，读取Nginx配置文件，跟Location block匹配，匹配成功之后，调用Location中相应的指令进而启动不同的模块来工作;（多进程-多线程）
+3）基于Linux操作系统平台如何构建软件服务：基于YUM二进制方式，基于MAKE源码编译方式（生产环境推荐），掌握软件服务安装、配置、升级、卸载操作;
+4）学习Linux技术，重点是学习软件服务，而软件服务中重点掌握软件服务各个目录功能（Nginx：conf、logs、html、sbin）和配置文件各个指令的含义;
+5）掌握Linux软件服务的配置文件指令和参数的调整、优化，使其在现有的设备资源的情况下，发挥最大的性能，满足企业高并发的用户访问;
+6）作为运维人员主要的工作职责保证企业门户网站、业务系统、数据库、IT设备资源的高效、稳定的运行，出现任何的故障、问题能够及时排错和解决;
+2、Nginx配置文件参数调优
+#定义Nginx运行的用户和用户组
+user  www  www;
+#启动进程,通常设置成和cpu的数量相等
+worker_processes  8;
+worker_cpu_affinity 00000001 00000010 00000100 00001000 00010000 00100000 01000000 10000000;
+#为每个进程分配cpu，上例中将8个进程分配到8个cpu，当然可以写多个，或者将一个进程分配到多个cpu。
+worker_rlimit_nofile  102400;
+#该指令是当一个nginx进程打开的最多文件描述符数目，理论值应该是最多打开文件数（ulimit -n）与nginx进程数相除，但是nginx分配请求并不是那么均匀，所以最好与ulimit -n的值保持一致。
+#全局错误日志及PID文件
+error_log  /usr/local/nginx/logs/error.log info; 
+#错误日志定义等级，[ debug | info | notice | warn | error | crit ]
+pid        /usr/local/nginx/nginx.pid;
+#工作模式及连接数上限
+events {
+use   epoll;             	
+#epoll是多路复用IO(I/O Multiplexing)中的一种方式,但是仅用于linux2.6以上内核,可以大大提高nginx的性能。
+worker_connections  10000;	
+#单个后台worker process进程的最大并发链接数 （最大连接数=连接数*进程数）
+multi_accept  on; 
+#尽可能多的接受请求.
+}
+#设定http服务器，利用它的反向代理功能提供负载均衡支持
+http {
+#设定mime类型,类型由mime.type文件定义
+include       mime.types;
+default_type   application/octet-stream;
+#设定日志格式
+access_log    /usr/local/nginx/log/nginx/access.log;
+sendfile      on;
+#sendfile 指令指定 nginx 是否调用 sendfile 函数（zero copy 方式）来输出文件，对于普通应用必须设为 on
+#如果用来进行下载等应用磁盘IO重负载应用，可设置为 off，以平衡磁盘与网络I/O处理速度，降低系统的uptime。
+#autoindex  on;  
+#开启目录列表访问，合适下载服务器，默认关闭。
+tcp_nopush on;   
+#防止网络阻塞
+keepalive_timeout  65;
+#keepalive超时时间，客户端到服务器端的连接持续有效时间，当出现对服务器的后继请求时，keepalive-timeout功能可避免建立或重新建立连接。(节省服务器资源、CPU、内存、网卡)
+tcp_nodelay   on; 
+#提高数据的实时响应性
+#开启gzip压缩
+gzip on;
+gzip_min_length  1k;
+gzip_buffers     4 128k;
+gzip_http_version 1.1;
+gzip_comp_level  4; 
+#压缩级别大小，最大为9，值越小，压缩后比例越小，CPU处理更快。
+#值越大，消耗CPU比较高。
+gzip_types       text/plain application/x-javascript text/css application/xml;
+gzip_vary on;
+client_max_body_size 10m;      
+#允许客户端请求的最大单文件字节数
+client_body_buffer_size 128k; 
+#缓冲区代理缓冲用户端请求的最大字节数.
+proxy_connect_timeout 300;      
+#nginx跟后端服务器连接超时时间(代理连接超时)
+proxy_send_timeout 300;         
+#后端服务器数据回传时间(代理发送超时)
+proxy_read_timeout 300;         
+#连接成功后，后端服务器响应时间(代理接收超时)
+proxy_buffer_size 4k;          
+#设置代理服务器（nginx）保存用户头信息的缓冲区大小
+proxy_buffers 4 32k;           
+#proxy_buffers缓冲区，网页平均在32k以下的话，这样设置
+proxy_busy_buffers_size  64k;   
+#高负荷下缓冲大小（proxy_buffers*2）
+#设定请求缓冲
+large_client_header_buffers  4 16k;
+client_header_buffer_size 4k;
+#客户端请求头部的缓冲区大小，这个可以根据你的系统分页大小来设置，一般一个请求的头部大小不会超过1k
+#不过由于一般系统分页都要大于1k，所以这里设置为分页大小。分页大小可以用命令getconf PAGESIZE取得。
+open_file_cache max=1G inactive=20s;
+#这个将为打开文件指定缓存，默认是没有启用的，max指定缓存数量，建议和打开文件数一致，inactive是指经过多长时间文件没被请求后删除缓存。
+open_file_cache_valid 30s;
+#这个是指多长时间检查一次缓存的有效信息。
+open_file_cache_min_uses 1;
+#open_file_cache指令中的inactive参数时间内文件的最少使用次数，如果超过这个数字，文件描述符一直是在缓存中打开的，如上例，如果有一个文件在inactive
+#包含其它配置文件，如自定义的虚拟主机
+include vhosts.conf;
+3、WEB网站报错502排错实战
+1）访问京峰Python站点：http://jforever.jingfengjiaoyu.com/，报502 Bad Gateway错误，解决的思路和步骤：
+ 
+2）客户端机器-ping访问网站域名对应的IP地址（ping、nslookup、dig）; 139.224.227.121
+ 
+3）根据如上方法，确认服务器的IP地址： 139.224.227.121，查找公司服务器登记列表，确认IP服务器是VIP（是否有均衡VIP）还是真实IP，从而得到用户名和密码;
+4）确认网站是通过什么WEB服务器（Apache、Nginx、Tomcat、Resin、Weblogic等）软件发布的，查看指令如下：
+netstat -tnlp|grep -w 80
+ 
+ps -ef|grep nginx
+ 
+5）Vim Nginx主配置文件（nginx.conf），查看虚拟主机是否配置，进而找到其是否均衡或者发布目录;
+ 
+6）根据如上配置文件，确认网站使用了负载均衡+反向代理，查找upstream的配置内容：
+ 
+ 
+7）查找82和83端口所在的后端服务，如何查找呢？通过netstat看不到端口进程，还有其他方法吗？看最初的设计和方案（谁部署和配置的，配置文档、规划文档）;
+ 
+4、Tomcat WEB服务器实战
+1）Tomcat是Apache基金会下的WEB服务器软件，开源、免费的，目前最新版本9.0；
+2）Tomcat是用于发布和解析JSP（Java Server Page）网页（基于JAVA语言开发的代码），将Tomcat称为JAVA容器，Tomcat软件本身基于JAVA语言开发，Apache和Nginx是基于C语言开发的；
+3）JAVA代码是如何开发的呢？
+通过JAVA工具开发（JDK），JDK是JAVA语言开发的软件工具包（平台），基于JDK工具包开发JAVA代码之后，需要通过JDK（JRE）去运行和编译、解析JAVA代码；
+4）JAVA开发人员通过JDK（调用JAVA API）工具包，开发了一套JAVA程序（JAVA源代码文件），不能直接被系统使用；
+5）通过JDK软件包中自带的编译程序：JAVAC，将JAVA源代码文件编译生成JAVA字节码（计算机可以识别），通过JRE（JVM虚拟机）运行这些JAVA字节码，从而解析这些字节码，最终将其映射到CPU指令集或OS的系统调用。
+6）总结：使用JAVA开发的软件程序、发布JAVA代码、JAVA需要运行等，都需要Linux底层系统部署JDK开发工具包（JAVA工具+JRE）（配置JDK环境）；
+
+
