@@ -144,6 +144,6 @@ docker run -itd --net=container:692de87ac76c --name=container_test docker.io/lem
 
 
 #############################
-docker改镜像名字：docker tag docker pull docker.io/lemonbar/centos6-ssh   docker.io/centos6
+docker改镜像名字：docker tag  docker.io/lemonbar/centos6-ssh   docker.io/centos6
 
 
