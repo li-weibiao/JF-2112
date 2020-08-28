@@ -143,6 +143,7 @@ docker run -itd --net=container:692de87ac76c --name=container_test docker.io/lem
 	Bridge模式（桥接模式）
 
 
-
+#############################
+docker改镜像名字：docker tag docker pull docker.io/lemonbar/centos6-ssh   docker.io/centos6
 
 
