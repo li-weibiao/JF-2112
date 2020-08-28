@@ -106,6 +106,10 @@ docker pull docker.io/lemonbar/centos6-ssh
 docker run -itd -p 80:80 -p 6022:22 docker.io/lemonbar/centos6-ssh:latest
  
 3)	基于CentOS6.5容器部署各种软件、应用程序，部署方法跟物理机部署方法，完全一样，没有什么区别；
+
+(cp  /etc/skel/.bash
+
+cp  /etc/skel/.bash* /root      配置完整的shell用户bash命令界面)
  
 4)	Docker虚拟化在生产环境有两种使用方式：
 	基于Docker Engine直接启动应用APP（软件）容器；（管理和使用不方便）
