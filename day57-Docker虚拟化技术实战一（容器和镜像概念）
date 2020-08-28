@@ -104,7 +104,7 @@ docker pull docker.io/lemonbar/centos6-ssh
  
 2)	基于CentOS6系统镜像启动CentOS6.x Docker容器，启动指令如下：（映射宿主机80和6022至容器中：80和22）；
 docker run -itd -p 80:80 -p 6022:22 docker.io/lemonbar/centos6-ssh:latest
- 
+(docker run --privileged  --name=jfedu-web01 -itd -p 80:80 -p 6022:22 docker.io/lemonbar/centos6-ssh:latest    #赋予完全root权限，可以修改主机名）   
 3)	基于CentOS6.5容器部署各种软件、应用程序，部署方法跟物理机部署方法，完全一样，没有什么区别；
 
 (cp  /etc/skel/.bash
